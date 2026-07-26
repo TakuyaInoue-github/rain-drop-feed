@@ -60,11 +60,11 @@ sources:
     tags: [personal]
     verified: false
 
-  - name: blef-fr         # Christophe Blefari
-    url: https://blef.fr/blog/rss
-    weight: +1
-    tags: [personal]
-    verified: false
+  # blef-fr (Christophe Blefari, https://blef.fr) は 2026-07-26 に削除した。
+  # 元URL https://blef.fr/blog/rss は HTTP 404。候補6件（/rss, /feed, /rss.xml,
+  # /index.xml, www.blef.fr/rss/ 含む）も全て 404 で、トップページの HTML にも
+  # feed の link 要素が存在せず、運用者確認でもフィードの提供なしと判断した。
+  # → TASK-027 (wontfix)。復活させる場合は git 履歴から定義を戻せる。
 
   - name: vutr-substack   # Vu Trinh
     url: https://vutr.substack.com/feed

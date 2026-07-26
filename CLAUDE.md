@@ -4,20 +4,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの現状
 
-**このリポジトリには実装コードもビルド/テスト/lint のツールチェーンもまだ存在しない。** 現時点の中身は `docs/` 配下のドキュメント一式のみで、ビルド・テスト・実行コマンドは定義されていない。実装を始める段階になったら、まず言語・パッケージマネージャ・テストランナーの選定を ADR として記録し、確定後にこの節へ実コマンドを追記すること。推測でコマンドを実行しない。
+骨格とツールチェーンは導入済み（→ [ADR-004](docs/04_decisions/ADR-004_implementation_stack.md)）。**取得・評価・投入の本体は未実装**で、`pipeline.run()` は `NotImplementedError` を送出する。SPEC 層（`docs/03_specs/`）は未着手であり、本体の実装はその確定後に行う。
+
+### コマンド
+
+すべて `uv run` 経由で実行する。素の `python3` / `pip` は使わない。
+
+```bash
+uv sync --extra dev        # 依存のインストール
+uv run pytest -q           # テスト
+uv run pytest -q --cov     # テスト + カバレッジ（閾値 80%）
+uv run ruff check .        # lint
+uv run mypy src            # 型チェック（strict）
+uv run lint-imports        # 層構造の依存方向チェック
+```
+
+CI（`.github/workflows/ci.yml`）は上記を Python 3.10 / 3.12 で実行する。**コード変更後はこの4つ（ruff / mypy / lint-imports / pytest）を通してから完了とすること。**
+
+### 層構造
+
+`src/feed_triage/` は4層。依存方向は `import-linter` が CI で強制する（`pyproject.toml` の `[tool.importlinter]`）。
+
+```
+cli.py                     argparse → RunOptions 構築、出力のみ
+pipeline.py                run(options) -> RunSummary（I/O なし）
+implementation/domain/     副作用のないロジック（state.py / scoring.py）
+implementation/adapters/   副作用の隔離（フィード取得・LLM 評価・投入・状態の永続化）
+contract/                  型定義（model.py / exit_codes.py）
+```
+
+**`domain → adapters` の単方向のみ許可し、逆は禁止**（ADR-004 設計原則: 決定論的部分と確率的部分の分離）。新しいモジュールを追加する際、副作用を持つなら `adapters/`、持たないなら `domain/` に置く。
 
 ## 何を作ろうとしているか
 
-`docs/.ref/spec.md` が唯一の実質的なプロダクト仕様（`feed-triage v0`）。技術ブログの RSS を週次で取得し、LLM トリアージを通して Raindrop.io へ自動投入する CLI を作る。
+技術ブログの RSS を週次で取得し、LLM トリアージを通して Raindrop.io へ自動投入する CLI（`feed-triage`）。
 
-想定フローは「feeds.yaml ロード → 全フィード取得 → `state.sqlite` と突合して新規 URL のみ抽出 → 各エントリを `claude -p` で 0-10 にスコアリング → `score + source weight >= 5` を Raindrop API へ POST → 投入しなかったものも含め全件を state に記録 → サマリ出力」。
+> **`docs/.ref/spec.md` は起点となった参照資料であり、正典ではない。** 下記2点は ADR により覆っているため、`.ref` の記述をそのまま実装に持ち込まないこと（差異の解消は TASK-026 / TASK-049）。
+> - `claude -p` によるスコアリング → **Anthropic API の直接呼び出し**（[ADR-001](docs/04_decisions/ADR-001_llm_invocation_method.md)）
+> - `state.sqlite`（`url` を PRIMARY KEY） → **追記専用の JSONL**（[ADR-005](docs/04_decisions/ADR-005_state_file_format.md)）
+
+想定フローは「feeds.yaml ロード → 全フィード取得 → 状態と突合して評価対象を抽出 → 各エントリを LLM で 0-10 にスコアリング → `score + source weight >= 5` を Raindrop API へ POST → 投入しなかったものも含め全件を状態に記録 → サマリ出力」。
 
 設計上の要点：
 
-- **冪等性が第一の受け入れ基準**（AC-1）。`state.sqlite` の `url` を PRIMARY KEY にして重複投入を防ぐ。
-- **閾値以下のエントリも score 付きで state に記録する**。これは後から閾値を検証するための実測データであり、省略すると AC-5 が満たせなくなる。
-- **LLM の応答は JSON 固定**（`{"score", "reason", "suggested_tags"}`）。パース失敗は 1 回リトライし、再失敗はスキップしてログに残す。例外でプロセスを落としてはならない（AC-2）。
-- **dry-run フラグ**で Raindrop POST をスキップしスコアのみ出力できること（AC-3）。
+- **冪等性が第一の受け入れ基準**。一意制約は DB ではなく**アプリ側で担保する**（ADR-005 のトレードオフ）。突合時に url をキーとする辞書を構築し、追記前に照合する。
+- **状態は追記専用**。同一 url の行が複数存在しうるため、現在の状態は **url ごとに `evaluated_at` が最大の行**として再構成する（ADR-005 OQ-001）。行順に依存してはならない（push 競合時の rebase で順序が保証されないため）。
+- **閾値以下のエントリも score 付きで記録する**。後から閾値を検証するための実測データであり、省略すると R-006 が満たせなくなる。
+- **LLM の応答は untrusted input として扱う**。構造化出力を用いるためスキーマ違反は起きないが、**値の意味的不正（範囲外スコア）は残る**。範囲外のスコアを投入判定に用いてはならない（F-001 AC-029）。パース失敗・API 障害は1回リトライし、再失敗はスキップして失敗回数とともに記録する。例外でプロセスを落としてはならない（REQ-F-010）。
+- **評価失敗は失敗回数が上限に達するまで次回実行で再評価する**（F-001 AC-018 / AC-019）。1回の失敗で恒久的に取りこぼしてはならない。
+- **dry-run フラグ**で投入をスキップしスコアのみ出力できること。dry-run では状態を更新しない（F-005 AC-004）。
+- **フィード取得は `httpx` で行い、バイト列を `feedparser` に渡す。** `feedparser.parse(url)` の URL モードは使わない（未修正の SSRF・メモリ枯渇 issue があるため → ADR-004 補遺B）。
 - `docs/.ref/feeds.yaml` の各ソースは全て `verified: false`。実装時に HTTP 200 + 有効な RSS/Atom を全件疎通確認して yaml を更新する（AC-4）。`snowflake-blog` の URL には要確認 TODO が付いている。
 - 秘匿値は `RAINDROP_TOKEN`（Bearer）と投入先コレクション ID。GitHub Actions では secrets 経由で渡す。
 
@@ -37,7 +73,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 仕様 | `03_specs/SPEC-xxx_*.md` | `SPEC-xxx` | 具体的にどう動くか | ユーザーゴールの定義 |
 | 意思決定 | `04_decisions/ADR-xxx_*.md` | `ADR-xxx` | なぜその設計にしたか | 実装手順 |
 
-現状 `01_requirements/` の 4 ファイルは全てテンプレートの雛形のまま（記述例が残っている状態）で、`02_features/` `03_specs/` `04_decisions/` には `_template.md` しかない。実文書はまだ 1 本もない。
+現状（最新は `docs/README.md` のドキュメント進捗表を参照する）:
+
+| 層 | 状態 |
+|---|---|
+| `01_requirements/` | 上流2層と両チェックリストを記述済み（`draft`）。独立レビューの指摘を反映済み |
+| `02_features/` | F-001〜005 を作成済み（`draft`）。AC 計 109 件 |
+| `03_specs/` | **未着手。** `_template.md` のみ |
+| `04_decisions/` | ADR-001〜005。うち **002 / 004 / 005 が `accepted`**、001 / 003 が `proposed` |
+
+**タスク・未解決事項は `docs/README.md` のタスク一覧が単一の情報源**。件数のサマリーも同ファイルにある。
 
 - **ドキュメントを生成・レビューする作業に入る前に `docs/SKILL.md` を読む。** 種別ごとの必要コンテキスト、生成時の禁止事項、レビュー報告フォーマットがそこに定義されている。
 - **粒度・境界の判断は `docs/05_guides/granularity_guide.md` に従う。** F/SPEC/ADR の分割統合ルール（Rule F-1〜4 / S-1〜4 / ADR-1〜4 / B-1〜4）と早見表、アンチパターン集がある。SKILL.md にあるのは概要のみ。
