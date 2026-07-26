@@ -177,7 +177,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 37 | 4 | 20 | 1 |
+| 36 | 4 | 21 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -216,7 +216,7 @@ R-001 ビジネス課題
 | TASK-033 | `OQ` | push 競合時の挙動を決める（rebase リトライ / 実行失敗 / `concurrency` 直列化） | [ADR-002 §OQ-004](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **`git pull --rebase` + 行マージ + 再 push**（最大3回、全失敗で非0終了）。ADR-005 の JSONL 採用により両方の行を残すマージが成立するため選べた選択肢 |
 | TASK-034 | `OQ` | cron の実行時刻を毎時0分から外すか判断する | [ADR-002 §OQ-005](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26: **外す。月曜 06:17 JST（= 日曜 21:17 UTC）**。公式が高負荷時のドロップを明記しており毎時0分は最も混み合う。0/15/30/45 分も避けた値。REQ-F-011 / F-002 AC-001 に反映済み |
 | TASK-035 | `OQ` | 閾値（現在5）の感度を検証する | [ADR-003 §OQ-002](04_decisions/ADR-003_triage_model_selection.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | モデルより閾値のほうが投入件数に効くレバーの可能性。TASK-023 と一体で検証する |
-| TASK-036 | `IMPL` | API キーに支出上限を設定し、ワークスペースを分離する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-09 | `open` | 独立レビュー指摘。漏洩時の金銭被害に上限を設ける（S-Z04 の具体的手段） |
+| TASK-036 | `IMPL` | API キーに支出上限を設定し、ワークスペースを分離する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26 完了。**専用ワークスペースを作成し、月 $10 の支出上限を設定**。最悪の複合ケース（年 $31.20 = 月 $2.60）に対しても正常運用を妨げず、暴走時には停止する水準。API キーはこのワークスペースを指定して発行する（→ TASK-025） |
 | TASK-037 | `CL` | API キーのローテーション方針を定める（S-S03 / OQ-001 のスコープに追加） | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-23 | `open` | enterprise_checklist S-S03 は現在 `-`。対象が Raindrop トークンのみだったため拡張が必要 |
 | TASK-038 | `OQ` | REQ-NF-001 の実測根拠を API 直接呼び出しで再測定するか判断する | [ADR-001 §OQ-002](04_decisions/ADR-001_llm_invocation_method.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 現行の根拠は `claude -p` での測定値。安全側のため実害はないが根拠と決定が乖離 |
 | TASK-022 | `IMPL` | 評価コストを年 $150 以下に抑える（軽量モデル＋最小システムプロンプト） | [system_requirements §REQ-NF-002a](01_requirements/system_requirements.md#req-nf-002a-評価コストの上限) | t_inoue | 2026-08-23 | `open` | 既定モデルのままだと年 $600。`.ref/spec.md` の「無視できる規模」という前提は実測により否定された |
@@ -268,3 +268,4 @@ R-001 ビジネス課題
 | 2026-07-26 | t_inoue | **ADR-004 を `accepted` に昇格。** OQ-001〜003 を決着（層構造は `domain → adapters` の契約を設ける方針、フィード取得は `httpx` + `feedparser`、依存は下限指定 + `uv.lock`）。**初稿の `defusedxml` 方針は一次情報の調査により撤回** — 未保守（2021年が最終リリース）かつ feedparser が XXE 対策を自前で持つため。真のリスクは SSRF・メモリ枯渇・ReDoS だった。TASK-016 / 055 / 059 / 060 を更新、TASK-062 を登録 |
 | 2026-07-26 | t_inoue | **実装の骨格を導入**（TASK-054 / 055 / 057 を `resolved`）。`pyproject.toml`・`uv.lock`・CI ワークフローを追加し、import-linter の契約2本（4層 + `domain → adapters`）を定義。domain 層に ADR-005 の畳み込み規則と F-001 AC-029 を実装しテストで担保（49件・カバレッジ 99.31%）。TASK-027 は候補6件を疎通確認したが全て 404 のため運用者の確認待ちとして記録 |
 | 2026-07-26 | t_inoue | 運用者確認により `blef-fr` のフィード未提供が確定。情報源から削除し、件数の記載を 14 → 13 に更新（REQ-NF-001 の測定条件・タイムアウト根拠、REQ-NF-002、§5 連携表、F-002 AC-022）。TASK-027 を `wontfix` で閉じ、経緯を `.ref/feeds.yaml` にコメントとして残した |
+| 2026-07-26 | t_inoue | TASK-036 完了。Anthropic Console に専用ワークスペースを作成し**月 $10 の支出上限**を設定。REQ-NF-002a に「コスト超過の強制的な停止」の行を追加し、目標値のみだった状態に実際の強制手段を紐づけた（検知はサマリを見るまで働かないため、気づく前に止まる手段を別に持つ） |
