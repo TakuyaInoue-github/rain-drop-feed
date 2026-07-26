@@ -177,7 +177,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 36 | 4 | 21 | 1 |
+| 39 | 4 | 21 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -210,7 +210,7 @@ R-001 ビジネス課題
 | TASK-061 | `DOC` | F-003 OQ-001 を `resolved` に更新し、AC-013 が ADR-005 の読み取り規則に従属することを明記する | [ADR-005 §後続アクション](04_decisions/ADR-005_state_file_format.md#後続アクション) | t_inoue | 2026-08-23 | `open` | TASK-030 は resolved だが F-003 の OQ 表が `open` のまま。`approved` 昇格時に矛盾する |
 | TASK-051 | `IMPL` | 一意制約をアプリ側で担保する処理を SPEC に明示し、テスト観点に含める | [ADR-005 §後続アクション](04_decisions/ADR-005_state_file_format.md#後続アクション) | t_inoue | 2026-08-23 | `open` | JSONL は DB のような一意制約を持たない。R-002（重複ゼロ）に直結するため実装とテストで担保する |
 | TASK-052 | `DOC` | ADR-005 の独立レビューを実施する | [ADR-005 §完了チェックリスト](04_decisions/ADR-005_state_file_format.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26 実施。中核前提の誤り（「更新が稀」が REQ-F-010 と矛盾）と事実誤認2件（textconv / ADR-002 への誤帰属）を検出し全件反映。→ [補遺A](04_decisions/ADR-005_state_file_format.md#補遺a-独立レビューの記録2026-07-26) |
-| TASK-053 | `OQ` | 評価失敗の再試行回数の上限を確定する（暫定3回） | [system_requirements §OQ-002](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 上限が低いと一時障害で取りこぼし、高いと壊れたエントリが毎週コストを発生させる。TASK-024（リトライ戦略）と一体で判断 |
+| TASK-053 | `OQ` | 評価失敗の再試行回数の上限を確定する（暫定3回） | [system_requirements §OQ-002](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 上限が低いと一時障害で取りこぼし、高いと壊れたエントリが毎週コストを発生させる。TASK-024（リトライ戦略）と一体で判断。**上限は「総試行回数」を意味する**（実行内の試行回数分カウントが進むため、TASK-024 で実行内回数を変えると追いかける週数も連動して変わる）。API 呼び出し自体の失敗は計上対象外 |
 | TASK-031 | `OQ` | 状態ブランチの名称・orphan 化の要否・コミットメッセージ規約を決める | [ADR-002 §OQ-002](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26: **orphan branch `state`**。コミットメッセージは `chore(state): record <N> entries (<YYYY-MM-DD>)`。`[skip ci]` は不要（`GITHUB_TOKEN` の push は再トリガーしない） |
 | TASK-032 | `OQ` | 状態更新のコミット粒度を決める（実行ごと / 投入ごと） | [ADR-002 §OQ-003](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **ローカルには投入直後に追記し、commit + push は実行末尾に1回**。投入ごとの push は週20〜30回となり所要時間・競合確率が悪化。強制終了時の記録喪失は ADR-002 のトレードオフとして受け入れる |
 | TASK-033 | `OQ` | push 競合時の挙動を決める（rebase リトライ / 実行失敗 / `concurrency` 直列化） | [ADR-002 §OQ-004](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **`git pull --rebase` + 行マージ + 再 push**（最大3回、全失敗で非0終了）。ADR-005 の JSONL 採用により両方の行を残すマージが成立するため選べた選択肢 |
@@ -236,6 +236,9 @@ R-001 ビジネス課題
 | TASK-059 | `OQ` | フィード取得・パースに使うライブラリを決める | [ADR-004 §OQ-002](04_decisions/ADR-004_implementation_stack.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **`httpx` で取得し `feedparser` にバイト列を渡す**（URL モードは使わない）。一次情報の調査で `defusedxml` は2021年が最終リリースで未保守、feedparser は XXE 対策を自前で持つと判明。真のリスクは SSRF・メモリ枯渇・ReDoS だった → [ADR-004 補遺B](04_decisions/ADR-004_implementation_stack.md#補遺b-フィード取得方式の調査2026-07-26) |
 | TASK-060 | `OQ` | Anthropic SDK のバージョンを固定するか範囲指定にするか決める | [ADR-004 §OQ-003](04_decisions/ADR-004_implementation_stack.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26: **`pyproject.toml` は下限指定、実バージョンは `uv.lock` で固定**（全依存に同方針）。モデル ID は SDK と独立に設定値として持ち、deprecation はモデル ID の変更で追従する |
 | TASK-062 | `OQ` | フィード取得時のレスポンスサイズ上限を決定する | [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-09 | `open` | feedparser の未修正 issue（レスポンス無制限読み込みによるメモリ枯渇）への緩和策。全文配信フィードが実測で2件（8,800字・9,238字）あり、TASK-029（要約の切り詰め）とも関係する |
+| TASK-063 | `OQ` | REQ-NF-003 の実行成功率の初期判定規則（実行8回未満時）を定める | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | 「直近8回のうち7回以上」は稼働4週時点でサンプルが足りない。要求定義 §4 の計測タイミング（稼働4週後）と噛み合っていない |
+| TASK-064 | `OQ` | フィード取得タイムアウト30秒の独立した根拠を示す | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | 現在は「30分に収まるから」で正当化しており、30分の根拠も「タイムアウト合計6.5分だから」で循環参照になっている。稼働後の実測で解消する |
+| TASK-065 | `DOC` | `#score-{n}` タグの n が補正前スコアか補正後スコアかを定義する | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | glossary の定義「付与されたスコアを示すタグ」が曖昧。補正後スコアは値域（0〜10）を超えうるため SPEC で確定する |
 | TASK-017 | `CL` | シークレット（トークン・Secrets）の定期棚卸しを行うか判断する | [enterprise_checklist §C-G03](01_requirements/enterprise_checklist.md#33-アクセス管理ガバナンス) | t_inoue | 2026-09-30 | `open` | 対象が数個のため優先度は低い |
 | TASK-018 | `CL` | 復旧手順（状態ファイル喪失時・重複投入発生時）を Runbook 化するか判断する | [enterprise_checklist §O-I02](01_requirements/enterprise_checklist.md#42-インシデント対応) | t_inoue | 2026-08-23 | `open` | 発生確率が低くない事象であり手順化の価値がある |
 | TASK-019 | `DOC` | 要件定義の承認後、F-xxx（機能）を作成する | [system_requirements §8](01_requirements/system_requirements.md#8-トレーサビリティマトリクス) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 に F-001〜005 を作成。トレーサビリティマトリクスの「機能」列を更新済み |
@@ -269,3 +272,4 @@ R-001 ビジネス課題
 | 2026-07-26 | t_inoue | **実装の骨格を導入**（TASK-054 / 055 / 057 を `resolved`）。`pyproject.toml`・`uv.lock`・CI ワークフローを追加し、import-linter の契約2本（4層 + `domain → adapters`）を定義。domain 層に ADR-005 の畳み込み規則と F-001 AC-029 を実装しテストで担保（49件・カバレッジ 99.31%）。TASK-027 は候補6件を疎通確認したが全て 404 のため運用者の確認待ちとして記録 |
 | 2026-07-26 | t_inoue | 運用者確認により `blef-fr` のフィード未提供が確定。情報源から削除し、件数の記載を 14 → 13 に更新（REQ-NF-001 の測定条件・タイムアウト根拠、REQ-NF-002、§5 連携表、F-002 AC-022）。TASK-027 を `wontfix` で閉じ、経緯を `.ref/feeds.yaml` にコメントとして残した |
 | 2026-07-26 | t_inoue | TASK-036 完了。Anthropic Console に専用ワークスペースを作成し**月 $10 の支出上限**を設定。REQ-NF-002a に「コスト超過の強制的な停止」の行を追加し、目標値のみだった状態に実際の強制手段を紐づけた（検知はサマリを見るまで働かないため、気づく前に止まる手段を別に持つ） |
+| 2026-07-27 | t_inoue | **TASK-020 の独立レビュー（第2回）を実施**し、必須指摘23件を全件反映。上流2層 + F-001〜005 と実装コードを対象とした2セッション。変更の波及漏れ（13情報源・frontmatter・決着済み OQ）と、TASK-006 の決定と矛盾する記述（REQ-NF-003 RTO 行）を解消。判断を要した4件を決着（API 失敗は failure_count に計上しない / 失敗回数は試行回数分増加 / 上限時は新規を優先 / 記録の全損は許容）。TASK-063〜065 を登録 |
