@@ -10,6 +10,7 @@ evaluated_at が最大の行として再構成する（ADR-005 OQ-001）。
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import datetime
 
 from feed_triage.contract.model import StateRecord
 
@@ -58,9 +59,13 @@ def select_evaluation_targets(
     `limit` を与えた場合、**新規 url を優先して枠を埋める**（F-001 AC-025a）。
     恒久的に失敗する記事が上限枠を占有して新規の供給を止めないため
     （R-001）。溢れた分は記録されず次回に持ち越される（AC-025）。
+
+    新規どうしは入力順（フィードからの取得順）を保つ。再評価対象どうしは
+    `evaluated_at` が古い順に並べる。選ばれなかった対象は次回さらに古くなり
+    先頭へ近づくため、すべての再評価対象がいずれ必ず選ばれる（SPEC-002 §6）。
     """
     fresh: list[str] = []
-    retry: list[str] = []
+    retry: list[tuple[datetime, str]] = []
     seen: set[str] = set()
     for url in new_urls:
         if url in seen:
@@ -70,8 +75,9 @@ def select_evaluation_targets(
         if record is None:
             fresh.append(url)
         elif not is_processed(record, max_failures):
-            retry.append(url)
-    selected = fresh + retry
+            retry.append((record.evaluated_at, url))
+    retry.sort(key=lambda pair: pair[0])
+    selected = fresh + [url for _, url in retry]
     if limit is None:
         return selected
     return selected[:limit]
