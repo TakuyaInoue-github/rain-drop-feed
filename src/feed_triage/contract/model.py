@@ -74,6 +74,11 @@ class RunSummary:
     new_entries: int = 0
     evaluated: int = 0
     evaluation_failures: int = 0
+    abandoned: int = 0
+    """失敗回数が上限に達し、以降再評価されなくなった記事の件数（F-004 AC-011a）。
+
+    一時的な障害（evaluation_failures）と恒久的な取りこぼしを区別するために持つ。
+    """
     ingested: int = 0
     ingest_failures: int = 0
     deferred: int = 0
