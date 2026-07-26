@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "feed-triage"
+version = "0.1.0"
+description = "技術ブログの RSS を週次で取得し、LLM トリアージを通して Raindrop.io へ自動投入する CLI"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "feedparser>=6.0.12",
+    "anthropic>=0.40",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+feed-triage = "feed_triage.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "types-PyYAML",
+    "import-linter>=2.0",
+    "respx>=0.21",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "feedparser.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.coverage.run]
+source = ["feed_triage"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[tool.importlinter]
+root_package = "feed_triage"
+
+# ADR-004 OQ-001: 層構造の契約
+# 上位層は下位層に依存してよいが、逆は禁止する。
+[[tool.importlinter.contracts]]
+name = "feed_triage layered architecture"
+type = "layers"
+containers = ["feed_triage"]
+layers = [
+    "cli",
+    "pipeline",
+    "implementation",
+    "contract",
+]
+
+# ADR-004 設計原則(3)（決定論的部分と確率的部分の分離）を機械的に強制する契約。
+# 外部依存（フィード取得・LLM 評価・Raindrop 投入・状態の永続化）はすべて
+# adapters 側に隔離し、判断ロジック（重複排除・重み補正・閾値判定）は
+# 副作用を持たない domain に置く。domain → adapters の単方向のみ許可する。
+[[tool.importlinter.contracts]]
+name = "implementation internal layering (domain depends on adapters, not vice versa)"
+type = "layers"
+containers = ["feed_triage.implementation"]
+layers = [
+    "domain",
+    "adapters",
+]

@@ -298,7 +298,7 @@ GitHub Actions のジョブでポーリングし続けると実行時間の大�
 | 構造化出力（JSON スキーマ強制）の適用可否を検証し、リトライ戦略を確定する | [TASK-024](../README.md#一覧) | t_inoue | 2026-08-23 | REQ-F-010 |
 | `ANTHROPIC_API_KEY` を GitHub Secrets に登録する | [TASK-025](../README.md#一覧) | t_inoue | 2026-08-09 | REQ-NF-006 |
 | `.ref/spec.md` の構成記述と本ADRの差異を SPEC 層に反映する | [TASK-026](../README.md#一覧) | t_inoue | 2026-08-23 | REQ-F-003 |
-| API キーに支出上限を設定し、ワークスペースを分離する | [TASK-036](../README.md#一覧) | t_inoue | 2026-08-09 | REQ-NF-002a, S-Z04 |
+| API キーに支出上限を設定し、ワークスペースを分離する（**2026-07-26 完了**: 専用ワークスペースに月 $10 の上限を設定） | [TASK-036](../README.md#一覧) | t_inoue | 2026-08-09 | REQ-NF-002a, S-Z04 |
 | API キーのローテーション方針を定める（S-S03 / OQ-001 のスコープに追加） | [TASK-037](../README.md#一覧) | t_inoue | 2026-08-23 | REQ-NF-006, S-S03 |
 
 ---
