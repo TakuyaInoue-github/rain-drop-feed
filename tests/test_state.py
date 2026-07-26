@@ -143,6 +143,36 @@ class TestEvaluationTargetPriority:
         assert got == new
         assert "https://example.com/old" not in got
 
+    def test_再評価対象はevaluated_atが古い順に選ばれる(self) -> None:
+        """SPEC-002 §6: 飢餓を構造的に防ぐ。取得順に依存しない。"""
+        newest = record("https://example.com/newest", at=BASE + timedelta(days=14), score=None, failure_count=1)
+        oldest = record("https://example.com/oldest", at=BASE, score=None, failure_count=1)
+        middle = record("https://example.com/middle", at=BASE + timedelta(days=7), score=None, failure_count=1)
+        state = fold_records([newest, oldest, middle])
+        # 入力順は新しい順だが、選定は古い順になる
+        got = select_evaluation_targets(
+            ["https://example.com/newest", "https://example.com/middle", "https://example.com/oldest"],
+            state,
+            max_failures=3,
+        )
+        assert got == [
+            "https://example.com/oldest",
+            "https://example.com/middle",
+            "https://example.com/newest",
+        ]
+
+    def test_上限があるとき最も古い再評価対象が選ばれる(self) -> None:
+        newest = record("https://example.com/newest", at=BASE + timedelta(days=14), score=None, failure_count=1)
+        oldest = record("https://example.com/oldest", at=BASE, score=None, failure_count=1)
+        state = fold_records([newest, oldest])
+        got = select_evaluation_targets(
+            ["https://example.com/newest", "https://example.com/oldest"],
+            state,
+            max_failures=3,
+            limit=1,
+        )
+        assert got == ["https://example.com/oldest"]
+
     def test_上限が候補数を上回るときは全件返る(self) -> None:
         state = self._state_with_failure("https://example.com/old")
         got = select_evaluation_targets(
