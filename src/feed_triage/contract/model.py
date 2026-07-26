@@ -58,6 +58,24 @@ class StateRecord:
 
 
 @dataclass(frozen=True)
+class RunRecord:
+    """`runs.jsonl` の1行に対応する実行単位の記録（SPEC-002 §4）。
+
+    エントリ単位の状態からは復元できない情報を保持する。現在の状態は
+    `run_at` が最大の行として再構成する。dry-run では追記しない。
+    """
+
+    run_at: datetime
+    sources: dict[str, int] = field(default_factory=dict)
+    """情報源名 → 取得件数。**取得0件の情報源も含める**（F-004 AC-003a）。"""
+    source_errors: dict[str, str] = field(default_factory=dict)
+    new_entries: int = 0
+    evaluated: int = 0
+    ingested: int = 0
+    deferred: int = 0
+
+
+@dataclass(frozen=True)
 class SourceOutcome:
     """1つの情報源の取得結果（F-004 AC-003 / AC-010）。"""
 
