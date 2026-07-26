@@ -183,7 +183,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 57 | 4 | 24 | 1 |
+| 60 | 4 | 24 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -244,7 +244,7 @@ R-001 ビジネス課題
 | TASK-062 | `OQ` | フィード取得時のレスポンスサイズ上限を決定する | [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-09 | `open` | feedparser の未修正 issue（レスポンス無制限読み込みによるメモリ枯渇）への緩和策。全文配信フィードが実測で2件（8,800字・9,238字）あり、TASK-029（要約の切り詰め）とも関係する |
 | TASK-063 | `OQ` | REQ-NF-003 の実行成功率の初期判定規則（実行8回未満時）を定める | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | 「直近8回のうち7回以上」は稼働4週時点でサンプルが足りない。要求定義 §4 の計測タイミング（稼働4週後）と噛み合っていない |
 | TASK-064 | `OQ` | フィード取得タイムアウト30秒の独立した根拠を示す | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | 現在は「30分に収まるから」で正当化しており、30分の根拠も「タイムアウト合計6.5分だから」で循環参照になっている。稼働後の実測で解消する |
-| TASK-065 | `DOC` | `#score-{n}` タグの n が補正前スコアか補正後スコアかを定義する | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | glossary の定義「付与されたスコアを示すタグ」が曖昧。補正後スコアは値域（0〜10）を超えうるため SPEC で確定する |
+| TASK-065 | `DOC` | `#score-{n}` タグの n が補正前スコアか補正後スコアかを定義する | [TASK-020 の独立レビュー](05_guides/prompts/independent_review.md) | t_inoue | 2026-08-23 | `open` | glossary の定義「付与されたスコアを示すタグ」が曖昧。補正後スコアは値域（0〜10）を超えうる。**2026-07-27: SPEC-004 の独立レビューにより方針変更** — タグは観察可能な振る舞いであり SPEC が独断で決めるべきでないため、**F-001 AC-002 / glossary 側で確定する** |
 | TASK-066 | `DOC` | SPEC-002 の独立レビューを実施する | [SPEC-002 §完了チェックリスト](03_specs/SPEC-002_state_management.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-27 実施。必須9件を全件反映。ADR-005 と矛盾する行順依存のタイブレークと、上位に根拠のない決定（フロー #21）を検出。後続5本への申し送りも取得 |
 | TASK-067 | `OQ` | 状態ファイルの増大時に古いエントリをアーカイブするか決める | [SPEC-002 §OQ-003](03_specs/SPEC-002_state_management.md#11-未解決事項-open-questions) | t_inoue | 2026-09-30 | `open` | ADR-005 の再検討条件（20,000行）に達した場合の具体的な手順が未定 |
 | TASK-068 | `OQ` | 状態に書き込む url の制御文字・改行の扱いを決める（拒否かエスケープか） | [SPEC-002 §OQ-004](03_specs/SPEC-002_state_management.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | JSONL は1行1レコードのため、改行が混入すると状態ファイルが破壊される |
@@ -266,6 +266,9 @@ R-001 ビジネス課題
 | TASK-084 | `OQ` | 1件の投入あたりの HTTP タイムアウト値を決める | [SPEC-004 §OQ-005](03_specs/SPEC-004_ingestion.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | フィード取得は30秒（REQ-NF-001）だが、投入は小さな JSON の POST であり同値でよいとは限らない |
 | TASK-085 | `OQ` | コレクション ID に `-1`（Unsorted）等を明示指定された場合に拒否するか決める | [SPEC-004 §OQ-007](03_specs/SPEC-004_ingestion.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | **F-001 AC-032 は「未設定」のときしか述べていない。** 明示指定された場合を拒否するなら AC の文言拡張が要る |
 | TASK-086 | `DOC` | SPEC-001 / 003 / 004 の独立レビューを実施する | [SPEC-001](03_specs/SPEC-001_feed_fetching.md) / [SPEC-003](03_specs/SPEC-003_entry_evaluation.md) / [SPEC-004](03_specs/SPEC-004_ingestion.md) | t_inoue | 2026-08-09 | `open` | 3本同時に別セッションで実施する。SPEC-002 の申し送りが守られているかの検証も含む |
+| TASK-087 | `OQ` | 設定ファイル（`feeds.yaml` / `profile.md`）が読めない場合の挙動を規定する AC を F に新設する | [SPEC-001 §OQ-008](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) / [SPEC-003 §OQ-009](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | **TASK-076 と同一論点。** F-001 AC-030 の対象は秘匿情報のみ、F-002 AC-012 も同様で、設定ファイルを含まない。2本の SPEC が同型の欠落を報告している |
+| TASK-088 | `OQ` | 提案タグの一部だけが不正だったときの部分採用の是非を F の AC として決める | [SPEC-003 §OQ-010](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | F-001 AC-027 は「空だったとき」までしか定めていない。構造化出力により発生しない見込みで優先度は低い |
+| TASK-089 | `OQ` | HTTP 400 の失敗分類を見直す（無限リトライ経路の解消） | [SPEC-003 §OQ-011](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | **`api_error` に分類すると `failure_count` が進まず、決定論的に再現するバグが毎週全エントリで再発する。** 分類の境界を「再試行で解決しうるか」へ改めるか、400 を第3分類として実行を即座に中止するか |
 | TASK-017 | `CL` | シークレット（トークン・Secrets）の定期棚卸しを行うか判断する | [enterprise_checklist §C-G03](01_requirements/enterprise_checklist.md#33-アクセス管理ガバナンス) | t_inoue | 2026-09-30 | `open` | 対象が数個のため優先度は低い |
 | TASK-018 | `CL` | 復旧手順（状態ファイル喪失時・重複投入発生時）を Runbook 化するか判断する | [enterprise_checklist §O-I02](01_requirements/enterprise_checklist.md#42-インシデント対応) | t_inoue | 2026-08-23 | `open` | 発生確率が低くない事象であり手順化の価値がある |
 | TASK-019 | `DOC` | 要件定義の承認後、F-xxx（機能）を作成する | [system_requirements §8](01_requirements/system_requirements.md#8-トレーサビリティマトリクス) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 に F-001〜005 を作成。トレーサビリティマトリクスの「機能」列を更新済み |
@@ -304,3 +307,4 @@ R-001 ビジネス課題
 | 2026-07-27 | t_inoue | TASK-069 を決着。SPEC-002 が上位の根拠なく決めていた「読み込み失敗時に実行を止める」を **F-002 AC-018** として F 層へ還流し、REQ-NF-004 との衝突も要件側で解消した（読み込み失敗は「構造的に毎回起こりうる」側にあたるため許容範囲外、と既存の線引きに位置づけ） |
 | 2026-07-27 | t_inoue | TASK-048 を決着。**`runs.jsonl`（実行単位の記録）を状態ブランチに追加**。エントリ単位の状態では F-004 AC-003a（情報源別の前回比）を原理的に満たせないため。SPEC-002 を v0.4.0 に、ADR-005 に OQ-003 を追記、`RunRecord` 型と用語を追加 |
 | 2026-07-27 | t_inoue | **SPEC-001 / 003 / 004 をサブエージェント3本の並列で執筆**。SPEC-002 を雛形とし、独立レビューの申し送り（踏襲4点・回避6点）を共通の制約として与えた。3本とも終了コードを新設せず、上位に AC がない振る舞いは勝手に決めず OQ に落としている（計6件）。TASK-071〜086 を登録 |
+| 2026-07-27 | t_inoue | SPEC-001 / 003 / 004 の独立レビュー（TASK-086）を実施し、**単独で解消できる15件を反映**。一次情報の再確認で SPEC-004 §8 の事実誤認3件を訂正（Test token は失効しない / `title` max 1000 / `excerpt` max 10000）。SPEC-003 に `should_record` を追加して SPEC-002 §6 との対応を機械的に検証可能にした。TASK-087〜089 を登録。**3本にまたがる4件は未着手** |
