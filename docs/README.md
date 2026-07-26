@@ -1,0 +1,268 @@
+# プロジェクト名: rain-drop-feed
+<!-- template: project-spec-templates v1.0.0-5-gb2775e3 (deployed: 2026-07-26) -->
+
+> **一行サマリー:** 技術ブログの RSS を週次で自動取得し、LLM によるトリアージを通して
+> 学習価値の高い記事だけを Raindrop.io へ投入することで、手動の巡回に依存していた
+> 収集レイヤーへの供給を無人化する CLI。
+
+---
+
+## ドキュメント構成
+
+```
+docs/
+├── SKILL.md                         # Claude Code スキル定義（生成・レビューの指示）
+├── README.md                        # このファイル（ナビゲーション）
+├── 00_glossary.md                   # 用語定義
+├── 01_requirements/
+│   ├── business_requirements.md     # 要求定義 (R-xxx)
+│   ├── system_requirements.md       # 要件定義 (REQ-F-xxx / REQ-NF-xxx)
+│   ├── enterprise_checklist.md      # 非機能・品質観点チェックリスト（全種別共通）
+│   └── application_checklist.md    # アプリ種別チェックリスト（Web / GUI / CUI）
+├── 02_features/
+│   ├── _template.md                 # 機能テンプレート
+│   └── F-001_*.md                   # 機能ごとのファイル
+├── 03_specs/
+│   ├── _template.md                 # 仕様テンプレート
+│   └── SPEC-001_*.md                # 仕様ごとのファイル
+├── 04_decisions/
+│   ├── _template.md                 # ADRテンプレート
+│   └── ADR-001_*.md                 # 意思決定記録
+└── 05_guides/
+    ├── granularity_guide.md         # F-xxx / SPEC-xxx / ADR-xxx の粒度・境界ガイド
+    └── llm_prompts.md               # Claude Code 用プロンプト集
+```
+
+### Claude Code での使い方
+
+```
+① Claude Code に「docs/SKILL.md を読んでください」と指示する
+        ↓
+② 05_guides/llm_prompts.md から目的のプロンプトをコピー
+        ↓
+③ [...] を埋めて実行
+```
+
+| やりたいこと | 使うプロンプト |
+|---|---|
+| 要求定義の初稿を書く | [prompts/business_requirements.md](05_guides/prompts/business_requirements.md) |
+| 要件定義の初稿を書く | [prompts/system_requirements.md](05_guides/prompts/system_requirements.md) |
+| 機能の初稿を書く | [prompts/feature.md](05_guides/prompts/feature.md) |
+| 仕様の初稿を書く | [prompts/spec.md](05_guides/prompts/spec.md) |
+| ADRを書く | [prompts/adr.md](05_guides/prompts/adr.md) |
+| ドキュメントをレビューする | 各プロンプトファイルの「レビュー」セクション |
+| F/SPECの粒度を確認する | [prompts/feature.md §粒度チェック](05_guides/prompts/feature.md#粒度チェック単体) |
+| 例外系の網羅性を確認する | [prompts/spec.md §例外系チェック](05_guides/prompts/spec.md#例外系の網羅性チェック単体) |
+
+### チェックリストの使い方
+
+```
+① enterprise_checklist.md    すべてのアプリケーションで記入する（共通ベースライン）
+        ↓
+② application_checklist.md   自分のアプリ種別の該当セクションを記入する
+   ├── Section 1: Web
+   ├── Section 2: Local GUI
+   └── Section 3: Local CUI / CLI
+```
+
+---
+
+## 層の定義と責務
+
+| 層 | ファイル | IDプレフィックス | 問いに答える |
+|---|---|---|---|
+| **要求定義** | `01_requirements/business_requirements.md` | `R-xxx` | なぜ作るか・誰が困っているか |
+| **要件定義** | `01_requirements/system_requirements.md` | `REQ-F-xxx` / `REQ-NF-xxx` | システムが満たすべき性質・制約 |
+| **機能** | `02_features/F-xxx_*.md` | `F-xxx` | ユーザーが何を"できる"か |
+| **仕様** | `03_specs/SPEC-xxx_*.md` | `SPEC-xxx` | システムが具体的にどう動くか |
+| **意思決定** | `04_decisions/ADR-xxx_*.md` | `ADR-xxx` | なぜその設計にしたか |
+
+> **F/SPEC/ADRの粒度・境界に迷ったら:** [05_guides/granularity_guide.md](05_guides/granularity_guide.md) を参照する。
+
+---
+
+## トレーサビリティマップ
+
+> 各ドキュメントに `traces:` セクションを設け、上位・下位のIDを明示する。
+
+```
+R-001 ビジネス課題
+  └─ REQ-F-001 機能要件
+        └─ F-001 機能
+              └─ SPEC-001 仕様A
+              └─ SPEC-002 仕様B
+  └─ REQ-NF-001 非機能要件（パフォーマンス）
+```
+
+---
+
+## ステータス定義
+
+| ステータス | 意味 |
+|---|---|
+| `draft` | 作成中・未レビュー |
+| `reviewing` | レビュー中 |
+| `approved` | 合意済み・基準線 |
+| `deprecated` | 廃止・後継あり |
+
+---
+
+## ドキュメント進捗
+
+| 層 | ファイル | ステータス | 備考 |
+|---|---|---|---|
+| 要求定義 | [business_requirements.md](01_requirements/business_requirements.md) | `draft` | R-001〜R-008 を定義済み。独立レビュー（TASK-020）の指摘を反映済み（v0.3.0） |
+| 要件定義 | [system_requirements.md](01_requirements/system_requirements.md) | `draft` | REQ-F-001〜011 / REQ-NF-001〜008 を定義済み。独立レビューの指摘を反映済み（v0.3.0） |
+| 非機能チェックリスト | [enterprise_checklist.md](01_requirements/enterprise_checklist.md) | `draft` | 全100項目記入済み（未検討6件は TASK 化） |
+| アプリ種別チェックリスト | [application_checklist.md](01_requirements/application_checklist.md) | `draft` | CLI (Section 3) を適用。未検討4件は TASK 化 |
+| 用語定義 | [00_glossary.md](00_glossary.md) | - | 上流2層で使用する用語を定義済み |
+| 機能 (F-xxx) | `02_features/` | `draft` | F-001〜005 を作成済み。独立レビューの指摘を反映済み（各 v0.2.0）。AC 計 109 件 |
+| 仕様 (SPEC-xxx) | `03_specs/` | 未着手 | F の独立レビュー後に着手する。ADR-002（状態永続化）の確定が前提となる SPEC がある |
+| 意思決定 (ADR-xxx) | `04_decisions/` | 一部確定 | **ADR-002 / 004 / 005 が `accepted`**（状態の永続化方式・形式、実装スタック）。ADR-001 / 003 は `proposed`（TASK-024 / TASK-023 が未決） |
+
+---
+
+## 機能一覧
+
+| ID | 機能名 | ステータス | 担当 | 対応要件 |
+|---|---|---|---|---|
+| [F-001](02_features/F-001_triage_and_ingest.md) | 新着記事を選別して収集レイヤーへ投入する | `draft` | t_inoue | REQ-F-001, 002, 003, 004, 005, 006, 010 |
+| [F-002](02_features/F-002_scheduled_execution.md) | 週次で無人実行される | `draft` | t_inoue | REQ-F-011 |
+| [F-003](02_features/F-003_verify_triage_criteria.md) | 投入されなかった記事の評価結果を後から検証する | `draft` | t_inoue | REQ-F-007 |
+| [F-004](02_features/F-004_execution_summary.md) | 実行結果のサマリで供給状況を把握する | `draft` | t_inoue | REQ-F-008 |
+| [F-005](02_features/F-005_dry_run.md) | 投入せずに選別結果を確認する | `draft` | t_inoue | REQ-F-009 |
+
+---
+
+## 仕様一覧
+
+> 未作成。機能 (F-xxx) の作成後に `03_specs/` へ追加する。
+
+| ID | 仕様名 | ステータス | 担当 | 対応機能 |
+|---|---|---|---|---|
+| - | - | - | - | - |
+
+---
+
+## 意思決定一覧
+
+| ID | タイトル | ステータス | 決定日 | 関連 |
+|---|---|---|---|---|
+| [ADR-001](04_decisions/ADR-001_llm_invocation_method.md) | トリアージのLLM呼び出しに Anthropic API を直接使用する | `proposed` | 2026-07-26 | REQ-F-003, REQ-NF-002a, REQ-F-011 |
+| [ADR-002](04_decisions/ADR-002_state_persistence.md) | 処理済み状態を専用ブランチへのコミットで永続化する | **`accepted`** | 2026-07-26 | REQ-F-002, REQ-F-007, REQ-NF-003, REQ-NF-004, ADR-005 |
+| [ADR-003](04_decisions/ADR-003_triage_model_selection.md) | トリアージの評価モデルに Claude Haiku 4.5 を採用する（暫定） | `proposed` | 2026-07-26 | ADR-001, REQ-F-003, REQ-NF-002a |
+| [ADR-004](04_decisions/ADR-004_implementation_stack.md) | 実装スタックを diff-review リポジトリの構成に揃える | **`accepted`** | 2026-07-26 | REQ-NF-008, ADR-001, ADR-005 |
+| [ADR-005](04_decisions/ADR-005_state_file_format.md) | 処理済み状態を追記専用の JSONL で保持する | **`accepted`** | 2026-07-26 | ADR-002, REQ-F-002, REQ-F-007 |
+
+---
+
+## タスク・未解決事項一覧
+
+> **運用ルール:**
+> - 各ドキュメントでタスク・OQが発生したら **必ずここに追記する**
+> - ドキュメントを `reviewing` に上げる前に、そのドキュメント由来のタスクが全件登録されていることを確認する
+> - `resolved` / `wontfix` になったタスクは行を消さず、ステータスを更新して残す（経緯の記録）
+> - `wontfix` には必ず理由を備考欄に記入する
+
+### ステータス定義
+
+| ステータス | 意味 |
+|---|---|
+| `open` | 未着手・未解決 |
+| `in-progress` | 対応中 |
+| `resolved` | 解決済み |
+| `wontfix` | 対応しないと決定 |
+
+### サマリー
+
+| `open` | `in-progress` | `resolved` | `wontfix` |
+|---|---|---|---|
+| 41 | 4 | 17 | 0 |
+
+> サマリーの件数は一覧を更新するたびに手動で合わせる。
+
+### 一覧
+
+> **種別:**
+> `OQ` 未解決の問い / `CL` チェックリスト未検討項目 / `IMPL` 実装タスク / `DOC` ドキュメントタスク
+
+| ID | 種別 | タイトル | 発生元 | 担当 | 期限 | ステータス | 備考 |
+|---|---|---|---|---|---|---|---|
+| TASK-001 | `OQ` | 現状値（巡回の途切れ・登録数の振れ）の実測ベースラインを確定する | [business_requirements §OQ-001](01_requirements/business_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | 実測を断念する場合も「稼働後の実測のみで評価する」と明記して閉じる |
+| TASK-002 | `OQ` | 週20本に到達しない場合の方針（フィード追加 or 閾値引き下げ）を決める | [business_requirements §OQ-002](01_requirements/business_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 稼働2週間の実測を待って判断する |
+| TASK-003 | `OQ` | トリアージ基準 (`profile.md`) をどの層で管理するか決める | [business_requirements §OQ-003](01_requirements/business_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | R-003 の成否がこの基準の質に依存する |
+| TASK-004 | `OQ` | 収集レイヤー (Raindrop) が利用不能になった場合の撤退・移行基準を定めるか | [business_requirements §OQ-004](01_requirements/business_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-09-30 | `open` | 優先度は低い。前提が崩れた際の判断材料として |
+| TASK-005 | `OQ` | 処理済み状態の永続化方式を決定し ADR 化する | [system_requirements §OQ-001](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: [ADR-002](04_decisions/ADR-002_state_persistence.md) を **`accepted`**。**状態専用の orphan branch `state` へ `state.jsonl` をコミットする**方式。形式は [ADR-005](04_decisions/ADR-005_state_file_format.md) に分離し同日 `accepted` |
+| TASK-006 | `OQ` | 評価失敗エントリを処理済みとするか、次回再試行対象として残すか決める | [system_requirements §OQ-002](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **回数制限付きで再試行する**。失敗回数を状態に持ち、上限（暫定3回 → TASK-053）に達するまで次回実行で再評価。一時障害による恒久的取りこぼしと、壊れたエントリの無限リトライの両方を回避 |
+| TASK-007 | `OQ` | 1エントリあたりの評価所要時間を実測し、実行時間目標を確定する | [system_requirements §OQ-003](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 実測: 1件 2.7〜4.8秒、100件で5〜8分。目標30分は妥当 |
+| TASK-008 | `OQ` | 定期実行環境で `claude -p` が利用可能か検証する | [system_requirements §OQ-004](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `in-progress` | 2026-07-26: ローカル非対話実行とJSON応答・判定精度を確認。Actions 上の認証手段は未確認（→ TASK-021） |
+| TASK-021 | `OQ` | 評価の呼び出し方式（`claude` CLI vs Anthropic API 直接）を ADR で決定する | [system_requirements §OQ-006](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `in-progress` | [ADR-001](04_decisions/ADR-001_llm_invocation_method.md) を `proposed` で起票。独立レビュー後に改訂（認証の事実誤認を訂正、選択肢を5案に再構成）。API 直接を維持。`accepted` で resolved にする |
+| TASK-023 | `OQ` | 使用モデルを確定する（Haiku 4.5 vs Sonnet 5） | [ADR-003](04_decisions/ADR-003_triage_model_selection.md) | t_inoue | 2026-08-23 | `in-progress` | ADR-001 から分離し [ADR-003](04_decisions/ADR-003_triage_model_selection.md) として起票。**Haiku 4.5 を暫定採用**。独立レビューで n=5 の外挿が不当と指摘され、投入率の推定を判断根拠から削除。実フィード20〜30件で再検証が必要 |
+| TASK-024 | `OQ` | 構造化出力を前提としたリトライ戦略を確定する | [ADR-001 §OQ-001](04_decisions/ADR-001_llm_invocation_method.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | スキーマ違反は排除されるが `max_tokens` 切断・refusal・API障害・値の意味的不正は残る。REQ-F-010 と併せて判断 |
+| TASK-025 | `IMPL` | `ANTHROPIC_API_KEY` を GitHub Secrets に登録する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-09 | `open` | ADR-001 が `accepted` になってから実施する |
+| TASK-026 | `DOC` | `.ref/spec.md` の構成記述と ADR-001 の差異を SPEC 層に反映する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-23 | `open` | `.ref` は `claude -p` 前提の構成図を持つ。SPEC 作成時に解消する |
+| TASK-027 | `IMPL` | `blef-fr` のフィードURLを修正する（現URLは HTTP 404） | [system_requirements §REQ-NF-002a](01_requirements/system_requirements.md#req-nf-002a-評価コストの上限) | t_inoue | 2026-08-09 | `open` | 2026-07-26 の疎通確認で判明。14件中これ1件のみ失敗。`.ref/spec.md` AC-4（全件疎通確認）に該当 |
+| TASK-028 | `OQ` | 1回の実行で評価する件数の上限を決める | [system_requirements §OQ-007](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | 状態消失時の全件再処理を防ぐ安全弁。超過分の次回持ち越し設計とあわせて判断 |
+| TASK-029 | `OQ` | 全文配信フィードの要約切り詰め上限（文字数）を決める | [system_requirements §OQ-008](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | `gcp-data-analytics` 8,800字 / `ssp-sh` 9,238字。トークン量と判定精度の両面に影響 |
+| TASK-030 | `OQ` | 状態ファイルの形式（SQLite / JSONL / CSV）を決める | [ADR-002 §OQ-001](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **追記専用の JSONL を採用**（→ [ADR-005](04_decisions/ADR-005_state_file_format.md)）。ADR-002 の採用理由「履歴が監査証跡を兼ねる」が SQLite では成立しないことが決め手 |
+| TASK-049 | `DOC` | `.ref/spec.md` の `state.sqlite` 指定との差異を SPEC 層に反映する | [ADR-005 §後続アクション](04_decisions/ADR-005_state_file_format.md#後続アクション) | t_inoue | 2026-08-23 | `open` | `.ref` は SQLite + `url` PRIMARY KEY を前提とした記述を持つ。TASK-026 と同種の差異 |
+| TASK-050 | `OQ` | 同一 URL が複数行現れた場合の読み取り規則を定める | [ADR-005 §OQ-001](04_decisions/ADR-005_state_file_format.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **各行に `evaluated_at` を持たせ、URL ごとに最大値の行を正とする**。行順ではなくタイムスタンプで決めることで ADR-002 OQ-004 の「順序に意味がない」と両立する。SPEC への明示が残作業 |
+| TASK-061 | `DOC` | F-003 OQ-001 を `resolved` に更新し、AC-013 が ADR-005 の読み取り規則に従属することを明記する | [ADR-005 §後続アクション](04_decisions/ADR-005_state_file_format.md#後続アクション) | t_inoue | 2026-08-23 | `open` | TASK-030 は resolved だが F-003 の OQ 表が `open` のまま。`approved` 昇格時に矛盾する |
+| TASK-051 | `IMPL` | 一意制約をアプリ側で担保する処理を SPEC に明示し、テスト観点に含める | [ADR-005 §後続アクション](04_decisions/ADR-005_state_file_format.md#後続アクション) | t_inoue | 2026-08-23 | `open` | JSONL は DB のような一意制約を持たない。R-002（重複ゼロ）に直結するため実装とテストで担保する |
+| TASK-052 | `DOC` | ADR-005 の独立レビューを実施する | [ADR-005 §完了チェックリスト](04_decisions/ADR-005_state_file_format.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26 実施。中核前提の誤り（「更新が稀」が REQ-F-010 と矛盾）と事実誤認2件（textconv / ADR-002 への誤帰属）を検出し全件反映。→ [補遺A](04_decisions/ADR-005_state_file_format.md#補遺a-独立レビューの記録2026-07-26) |
+| TASK-053 | `OQ` | 評価失敗の再試行回数の上限を確定する（暫定3回） | [system_requirements §OQ-002](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 上限が低いと一時障害で取りこぼし、高いと壊れたエントリが毎週コストを発生させる。TASK-024（リトライ戦略）と一体で判断 |
+| TASK-031 | `OQ` | 状態ブランチの名称・orphan 化の要否・コミットメッセージ規約を決める | [ADR-002 §OQ-002](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26: **orphan branch `state`**。コミットメッセージは `chore(state): record <N> entries (<YYYY-MM-DD>)`。`[skip ci]` は不要（`GITHUB_TOKEN` の push は再トリガーしない） |
+| TASK-032 | `OQ` | 状態更新のコミット粒度を決める（実行ごと / 投入ごと） | [ADR-002 §OQ-003](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **ローカルには投入直後に追記し、commit + push は実行末尾に1回**。投入ごとの push は週20〜30回となり所要時間・競合確率が悪化。強制終了時の記録喪失は ADR-002 のトレードオフとして受け入れる |
+| TASK-033 | `OQ` | push 競合時の挙動を決める（rebase リトライ / 実行失敗 / `concurrency` 直列化） | [ADR-002 §OQ-004](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **`git pull --rebase` + 行マージ + 再 push**（最大3回、全失敗で非0終了）。ADR-005 の JSONL 採用により両方の行を残すマージが成立するため選べた選択肢 |
+| TASK-034 | `OQ` | cron の実行時刻を毎時0分から外すか判断する | [ADR-002 §OQ-005](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26: **外す。月曜 06:17 JST（= 日曜 21:17 UTC）**。公式が高負荷時のドロップを明記しており毎時0分は最も混み合う。0/15/30/45 分も避けた値。REQ-F-011 / F-002 AC-001 に反映済み |
+| TASK-035 | `OQ` | 閾値（現在5）の感度を検証する | [ADR-003 §OQ-002](04_decisions/ADR-003_triage_model_selection.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | モデルより閾値のほうが投入件数に効くレバーの可能性。TASK-023 と一体で検証する |
+| TASK-036 | `IMPL` | API キーに支出上限を設定し、ワークスペースを分離する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-09 | `open` | 独立レビュー指摘。漏洩時の金銭被害に上限を設ける（S-Z04 の具体的手段） |
+| TASK-037 | `CL` | API キーのローテーション方針を定める（S-S03 / OQ-001 のスコープに追加） | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-23 | `open` | enterprise_checklist S-S03 は現在 `-`。対象が Raindrop トークンのみだったため拡張が必要 |
+| TASK-038 | `OQ` | REQ-NF-001 の実測根拠を API 直接呼び出しで再測定するか判断する | [ADR-001 §OQ-002](04_decisions/ADR-001_llm_invocation_method.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 現行の根拠は `claude -p` での測定値。安全側のため実害はないが根拠と決定が乖離 |
+| TASK-022 | `IMPL` | 評価コストを年 $150 以下に抑える（軽量モデル＋最小システムプロンプト） | [system_requirements §REQ-NF-002a](01_requirements/system_requirements.md#req-nf-002a-評価コストの上限) | t_inoue | 2026-08-23 | `open` | 既定モデルのままだと年 $600。`.ref/spec.md` の「無視できる規模」という前提は実測により否定された |
+| TASK-009 | `OQ` | 複数の情報源から同一記事を取得した場合の名寄せ要否を決める | [system_requirements §OQ-005](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 公式ブログと HN の重複が想定される |
+| TASK-010 | `CL` | 機械可読出力（`--json` 等）の提供要否を判断する | [application_checklist §C-I05](01_requirements/application_checklist.md#32-インターフェース設計) | t_inoue | 2026-08-23 | `open` | - |
+| TASK-011 | `CL` | カラー出力の要否と `NO_COLOR` 対応を判断する | [application_checklist §C-I06](01_requirements/application_checklist.md#32-インターフェース設計) | t_inoue | 2026-08-23 | `open` | - |
+| TASK-012 | `CL` | シグナルハンドリング / グレースフル終了の実装要否を判断する | [application_checklist §C-I07](01_requirements/application_checklist.md#32-インターフェース設計), [enterprise_checklist §R-G02](01_requirements/enterprise_checklist.md#23-縮退動作グレースフルデグレード) | t_inoue | 2026-08-09 | `open` | 2つのチェックリストで同一論点。TASK-005 と併せて判断する |
+| TASK-013 | `CL` | 設定ファイル・状態ファイルの配置方針（XDG 準拠 or リポジトリ内固定）を決める | [application_checklist §C-F01](01_requirements/application_checklist.md#34-設定ファイル管理) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **リポジトリ内固定**。状態は orphan branch `state` のルート直下に `state.jsonl`（→ [ADR-005](04_decisions/ADR-005_state_file_format.md) OQ-002）。設定（`feeds.yaml` / `profile.md`）は既定ブランチのリポジトリ内。XDG 準拠は採らない（状態が Git 管理下にあるため） |
+| TASK-014 | `CL` | Raindrop トークンのローテーション方針を定めるか判断する | [enterprise_checklist §S-S03](01_requirements/enterprise_checklist.md#15-シークレット管理) | t_inoue | 2026-08-23 | `open` | - |
+| TASK-015 | `CL` | 依存ライブラリの脆弱性スキャン導入要否を判断する | [enterprise_checklist §S-SC01](01_requirements/enterprise_checklist.md#17-サプライチェーン依存ライブラリ), [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-23 | `open` | **feedparser に未修正の security issue が3件残る**（SSRF / メモリ枯渇 / ReDoS。うち SSRF は本システムでは該当しない）。上流の未修正 issue を継続的に検知する必要があるかを、この事実を踏まえて判断する |
+| TASK-016 | `CL` | 静的解析（lint / 型チェック / SAST）の CI 組み込み方針を決める | [enterprise_checklist §S-T01](01_requirements/enterprise_checklist.md#18-セキュリティテスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: [ADR-004](04_decisions/ADR-004_implementation_stack.md) `accepted`。**ruff / mypy strict / import-linter / カバレッジ80% を Python 3.10・3.12 のマトリクスで CI 実行する**。要件定義 REQ-NF-008「実装品質のゲート」が上位要件。ワークフローの実定義は TASK-054 に含む |
+| TASK-054 | `IMPL` | `pyproject.toml` を作成しツールチェーンを導入する | [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-09 | `open` | Python 3.10+ / uv / pytest / ruff / mypy strict / import-linter。diff-review の設定を出発点にする |
+| TASK-055 | `IMPL` | 本システムの層構造を設計し `import-linter` の契約を定義する | [ADR-004 §OQ-001](04_decisions/ADR-004_implementation_stack.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | **方針は ADR-004 で決定済み**（`domain → adapters` の契約を必ず設け、外部依存を adapters に隔離する）。残るのは階層名とモジュール分割の具体設計。diff-review の契約はレビューツール向けのため調整が要る |
+| TASK-056 | `IMPL` | `diff-review` を開発フローに導入する | [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-23 | `open` | pre-push hook または PR 前実行。[code-review-toolkits](https://github.com/TakuyaInoue-github/code-review-toolkits) |
+| TASK-057 | `DOC` | プロジェクト `CLAUDE.md` の「実装コードもツールチェーンも存在しない」節を実コマンドに更新する | [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-09 | `open` | TASK-054 の完了後。`uv run pytest` / `uv run ruff check` / `uv run mypy` 等を記載 |
+| TASK-058 | `DOC` | ADR-004 の独立レビューを実施する | [ADR-004 §完了チェックリスト](04_decisions/ADR-004_implementation_stack.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26 実施。参照元リポジトリとの突き合わせで事実誤認3件（設計原則の数 / 層構造 / ruff 設定）を検出し全件反映。→ [補遺A](04_decisions/ADR-004_implementation_stack.md#補遺a-独立レビューの記録2026-07-26) |
+| TASK-059 | `OQ` | フィード取得・パースに使うライブラリを決める | [ADR-004 §OQ-002](04_decisions/ADR-004_implementation_stack.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **`httpx` で取得し `feedparser` にバイト列を渡す**（URL モードは使わない）。一次情報の調査で `defusedxml` は2021年が最終リリースで未保守、feedparser は XXE 対策を自前で持つと判明。真のリスクは SSRF・メモリ枯渇・ReDoS だった → [ADR-004 補遺B](04_decisions/ADR-004_implementation_stack.md#補遺b-フィード取得方式の調査2026-07-26) |
+| TASK-060 | `OQ` | Anthropic SDK のバージョンを固定するか範囲指定にするか決める | [ADR-004 §OQ-003](04_decisions/ADR-004_implementation_stack.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26: **`pyproject.toml` は下限指定、実バージョンは `uv.lock` で固定**（全依存に同方針）。モデル ID は SDK と独立に設定値として持ち、deprecation はモデル ID の変更で追従する |
+| TASK-062 | `OQ` | フィード取得時のレスポンスサイズ上限を決定する | [ADR-004 §後続アクション](04_decisions/ADR-004_implementation_stack.md#後続アクション) | t_inoue | 2026-08-09 | `open` | feedparser の未修正 issue（レスポンス無制限読み込みによるメモリ枯渇）への緩和策。全文配信フィードが実測で2件（8,800字・9,238字）あり、TASK-029（要約の切り詰め）とも関係する |
+| TASK-017 | `CL` | シークレット（トークン・Secrets）の定期棚卸しを行うか判断する | [enterprise_checklist §C-G03](01_requirements/enterprise_checklist.md#33-アクセス管理ガバナンス) | t_inoue | 2026-09-30 | `open` | 対象が数個のため優先度は低い |
+| TASK-018 | `CL` | 復旧手順（状態ファイル喪失時・重複投入発生時）を Runbook 化するか判断する | [enterprise_checklist §O-I02](01_requirements/enterprise_checklist.md#42-インシデント対応) | t_inoue | 2026-08-23 | `open` | 発生確率が低くない事象であり手順化の価値がある |
+| TASK-019 | `DOC` | 要件定義の承認後、F-xxx（機能）を作成する | [system_requirements §8](01_requirements/system_requirements.md#8-トレーサビリティマトリクス) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 に F-001〜005 を作成。トレーサビリティマトリクスの「機能」列を更新済み |
+| TASK-020 | `DOC` | 上流2層 + F-001〜005 の独立コンテキストレビューを実施する | [SKILL.md §独立検証](SKILL.md) | t_inoue | 2026-08-09 | `open` | `reviewing` → `approved` の前に、別セッションで [independent_review.md](05_guides/prompts/independent_review.md) を実行する。**F 作成後にまとめて実施する方針に変更**（要件が F へ落ちるかは F を書くまで検証できないため） |
+| TASK-039 | `OQ` | 起動時の秘匿情報チェックに `ANTHROPIC_API_KEY` を含めるか | [F-001 §OQ-005](02_features/F-001_triage_and_ingest.md#8-未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **含める**。要件定義 §5 GitHub Secrets 行の「未設定・不正な場合は起動直後に検知し、明示的なエラーで終了する」が API キーにも適用される。F-001 AC-030 に反映済み |
+| TASK-046 | `OQ` | レート制限による投入拒否の識別を F-001 と F-004 のどちらで担保するか | [F-001 §OQ-006](02_features/F-001_triage_and_ingest.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 状態全損時に数千件が投入対象になると 429 の現実的経路がある。現状どちらの F にも「投入失敗の理由を区別する」AC がなかった |
+| TASK-047 | `OQ` | フィード保持件数上限による取りこぼしを許容するか、欠落検知を設けるか | [F-002 §OQ-004](02_features/F-002_scheduled_execution.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 実測で複数フィードが取得20件で頭打ち。2〜3週間の実行欠落で取りこぼしが確定的に発生し、AC-011 の「恒久化しない」が原理的に満たせない |
+| TASK-048 | `OQ` | サマリの「直近の実行における取得件数」の取得元を決める | [F-004 §OQ-004](02_features/F-004_execution_summary.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 処理済み記録から算出するか、実行サマリを別途保持するか。AC-003a（供給の静かな停止の検知）の実現方式 |
+| TASK-040 | `OQ` | 蓄積した評価記録が全損した場合の扱いを決める | [F-003 §OQ-003](02_features/F-003_verify_triage_criteria.md#8-未解決事項-open-questions) | t_inoue | 2026-08-09 | `in-progress` | 2026-07-26: 要件定義 REQ-NF-003 の RPO を「重複排除の情報: 1週間 / 評価記録: 復旧不能」に分割し、非対称性を明記した。**許容するかの結論を F-003 AC-005 に反映してから `approved` へ上げる** |
+| TASK-041 | `OQ` | 実行サマリの評価コストの算出方法を決める | [F-004 §OQ-003](02_features/F-004_execution_summary.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | API 応答のトークン数から算出するか、件数からの概算に留めるか。REQ-NF-002a の検知手段 |
+| TASK-042 | `OQ` | dry-run の出力範囲を決める（スコアと判定のみか、付与予定タグまで再現するか） | [F-005 §OQ-001](02_features/F-005_dry_run.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | - |
+| TASK-043 | `OQ` | dry-run の反復実行に伴う評価コストに上限を設けるか | [F-005 §OQ-002](02_features/F-005_dry_run.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 記録を更新しない仕様のため、繰り返すたびに同じ記事の評価コストが発生する。TASK-028 の件数上限と併せて判断 |
+| TASK-044 | `OQ` | 成功基準「週20本以上」の判定単位を決める（単週 or 平均） | [business_requirements §OQ-005](01_requirements/business_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | §3.3 が「登録数が週によって振れる」ことを症状として挙げているため、単週判定では自然なばらつきを失敗と誤判定しうる。TASK-002 と一体で判断 |
+| TASK-045 | `DOC` | 上流2層の独立レビュー指摘のうち SPEC 層送りとしたものを SPEC 作成時に反映する | [TASK-020 の独立レビュー結果](05_guides/prompts/independent_review.md) | t_inoue | 2026-09-30 | `open` | 権限マトリクスの強制手段の明示（E-1）、Raindrop のタグ一括削除の可否確認（E-4）、`enterprise_checklist` S-I04 / `application_checklist` C-S01 の `claude -p` 前提の見直し（ADR-001 でサブプロセス起動自体がなくなるため `✗` に変わる可能性が高い） |
+
+---
+
+## 更新履歴
+
+| 日付 | 更新者 | 内容 |
+|---|---|---|
+| 2026-07-26 | - | 初版作成 |
+| 2026-07-26 | t_inoue | 一行サマリーを記入。`docs/.ref/spec.md` を基に上流2層（要求定義・要件定義）と両チェックリスト・用語定義を作成し、TASK-001〜020 を登録 |
+| 2026-07-26 | t_inoue | F-001〜005 を作成（REQ-F-001〜011 を5つのゴール単位に整理）。TASK-039〜043 を登録し、TASK-019 を `resolved` に更新。TASK-020 の対象を「上流2層 + F」へ拡大 |
+| 2026-07-26 | t_inoue | TASK-020 の独立レビュー（上流2層 / F-001・002 / F-003〜005 の3セッション）を実施し、必須指摘 37 件を全件反映。上流2層と F-001〜005 を改訂。TASK-044〜048 を登録、TASK-039 を `resolved`、TASK-040 を `in-progress` に更新。用語「投入対象」を追加、`application_checklist` C-I01 を非0終了に修正 |
+| 2026-07-26 | t_inoue | 実装ブロッカーの状態系 OQ を決着。[ADR-005](04_decisions/ADR-005_state_file_format.md)（JSONL）を起票し、TASK-030/006/031/032/033/013 を `resolved` に。ADR-002 のトレードオフ表と OQ を決着後の内容へ更新、F-001/002/003 の AC に反映。TASK-049〜053 を登録 |
+| 2026-07-26 | t_inoue | [ADR-004](04_decisions/ADR-004_implementation_stack.md)（実装スタック）を起票。[code-review-toolkits](https://github.com/TakuyaInoue-github/code-review-toolkits) の構成（Python 3.10+ / uv / pytest / ruff / mypy strict / import-linter）を踏襲する決定。TASK-016 を `in-progress` に、TASK-054〜060 を登録。要件定義 §1 の宛先のない ADR-001 参照を ADR-004 へ修正 |
+| 2026-07-26 | t_inoue | ADR-004 / ADR-005 の独立レビュー（TASK-058 / TASK-052）を実施し、必須指摘10件を全件反映。ADR-005 は中核前提を「更新が稀」から「追記による論理的上書き」へ訂正し OQ-001 を `evaluated_at` 最大値で決着、ADR-004 は参照元の事実誤認3件を訂正。両 ADR に補遺Aとして経緯を記録。REQ-NF-008 に「実装品質のゲート」を追加。TASK-050/052/058 を `resolved`、TASK-061 を登録。**両 ADR とも結論は不変** |
+| 2026-07-26 | t_inoue | **ADR-002 / ADR-005 を `accepted` に昇格。** 前提として ADR-002 OQ-005（cron 実行時刻）を決着し月曜 06:17 JST とした（REQ-F-011 / F-002 AC-001 に反映）。TASK-005 / TASK-034 を `resolved`。状態管理の設計が確定し、実装着手の主要ブロッカーが解消 |
+| 2026-07-26 | t_inoue | **ADR-004 を `accepted` に昇格。** OQ-001〜003 を決着（層構造は `domain → adapters` の契約を設ける方針、フィード取得は `httpx` + `feedparser`、依存は下限指定 + `uv.lock`）。**初稿の `defusedxml` 方針は一次情報の調査により撤回** — 未保守（2021年が最終リリース）かつ feedparser が XXE 対策を自前で持つため。真のリスクは SSRF・メモリ枯渇・ReDoS だった。TASK-016 / 055 / 059 / 060 を更新、TASK-062 を登録 |

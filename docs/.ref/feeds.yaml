@@ -1,0 +1,96 @@
+# feed-triage: 購読フィード定義 v0
+# weight: LLMスコアへの事前補正 (+1/0/-1)。一次情報の設計解説が多いソースを優遇
+# verified: 実装時に HTTP 200 + 有効なRSS/Atom であることを確認すること
+
+sources:
+  # ===== 公式ベンダーブログ =====
+  - name: aws-big-data
+    url: https://aws.amazon.com/blogs/big-data/feed/
+    weight: 0
+    tags: [aws]
+    verified: false
+
+  - name: aws-database
+    url: https://aws.amazon.com/blogs/database/feed/
+    weight: 0
+    tags: [aws]
+    verified: false
+
+  - name: aws-architecture
+    url: https://aws.amazon.com/blogs/architecture/feed/
+    weight: 0
+    tags: [aws]
+    verified: false
+
+  - name: aws-machine-learning
+    url: https://aws.amazon.com/blogs/machine-learning/feed/
+    weight: -1   # 量が多く告知比率が高いため事前減点
+    tags: [aws, ml]
+    verified: false
+
+  - name: gcp-data-analytics
+    url: https://cloudblog.withgoogle.com/products/data-analytics/rss/
+    weight: 0
+    tags: [gcp]
+    verified: false
+
+  - name: databricks-blog
+    url: https://www.databricks.com/feed
+    weight: +1   # 主戦場。Community Technical Blog は RSS 有無を実装時調査
+    tags: [databricks]
+    verified: false
+
+  - name: snowflake-blog
+    url: https://www.snowflake.com/feed/   # TODO: 正確なフィードURL要確認
+    weight: 0
+    tags: [snowflake]
+    verified: false
+
+  # ===== 企業テックブログ (非ベンダー) =====
+  - name: netflix-tech
+    url: https://netflixtechblog.com/feed
+    weight: +1
+    tags: [eng-blog]
+    verified: false
+
+  # ===== 個人ブログ (データエンジニアリング著名人) =====
+  - name: ssp-sh          # Simon Späti
+    url: https://ssp.sh/index.xml
+    weight: +1
+    tags: [personal]
+    verified: false
+
+  - name: blef-fr         # Christophe Blefari
+    url: https://blef.fr/blog/rss
+    weight: +1
+    tags: [personal]
+    verified: false
+
+  - name: vutr-substack   # Vu Trinh
+    url: https://vutr.substack.com/feed
+    weight: +1
+    tags: [personal]
+    verified: false
+
+  # ===== コミュニティ評価済み (Hacker News) =====
+  - name: hn-databricks
+    url: https://hnrss.org/newest?q=databricks&points=50
+    weight: 0
+    tags: [hn]
+    verified: false
+
+  - name: hn-lakehouse
+    url: https://hnrss.org/newest?q=lakehouse&points=50
+    weight: 0
+    tags: [hn]
+    verified: false
+
+  - name: hn-data-engineering
+    url: https://hnrss.org/newest?q=%22data+engineering%22&points=50
+    weight: 0
+    tags: [hn]
+    verified: false
+
+# 実装メモ:
+# - weight は LLM スコアに加算後、閾値 (5) と比較する
+# - kilimchoi/engineering-blogs の OPML から追加候補を拾うのは v1 以降 (YAGNI)
