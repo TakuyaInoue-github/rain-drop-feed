@@ -60,6 +60,10 @@ sources:
     tags: [personal]
     verified: false
 
+  # TODO(TASK-027): このURLは HTTP 404。候補6件（/rss, /feed, /rss.xml, /index.xml,
+  # www.blef.fr/rss/ 含む）を疎通確認したが全て 404、トップページの HTML にも
+  # feed の link 要素が存在しなかった。運用者による確認が必要。
+  # 解決するまで実装側では取得失敗としてスキップされる（F-001 AC-011）。
   - name: blef-fr         # Christophe Blefari
     url: https://blef.fr/blog/rss
     weight: +1
