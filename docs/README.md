@@ -177,7 +177,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 38 | 4 | 20 | 0 |
+| 37 | 4 | 20 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -201,7 +201,7 @@ R-001 ビジネス課題
 | TASK-024 | `OQ` | 構造化出力を前提としたリトライ戦略を確定する | [ADR-001 §OQ-001](04_decisions/ADR-001_llm_invocation_method.md#未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | スキーマ違反は排除されるが `max_tokens` 切断・refusal・API障害・値の意味的不正は残る。REQ-F-010 と併せて判断 |
 | TASK-025 | `IMPL` | `ANTHROPIC_API_KEY` を GitHub Secrets に登録する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-09 | `open` | ADR-001 が `accepted` になってから実施する |
 | TASK-026 | `DOC` | `.ref/spec.md` の構成記述と ADR-001 の差異を SPEC 層に反映する | [ADR-001 §後続アクション](04_decisions/ADR-001_llm_invocation_method.md#後続アクション) | t_inoue | 2026-08-23 | `open` | `.ref` は `claude -p` 前提の構成図を持つ。SPEC 作成時に解消する |
-| TASK-027 | `IMPL` | `blef-fr` のフィードURLを修正する（現URLは HTTP 404） | [system_requirements §REQ-NF-002a](01_requirements/system_requirements.md#req-nf-002a-評価コストの上限) | t_inoue | 2026-08-09 | `open` | 2026-07-26 の疎通確認で判明。14件中これ1件のみ失敗。`.ref/spec.md` AC-4（全件疎通確認）に該当。**同日の追加調査で候補6件（`/rss` `/feed` `/rss.xml` `/index.xml` 等）を疎通確認したが全て 404、トップページの HTML にも feed の link 要素なし。自動探索では解決できず、運用者による確認が必要**（推測での URL 設定は静かに0件を返し続けるため行わない） |
+| TASK-027 | `IMPL` | `blef-fr` のフィードURLを修正する（現URLは HTTP 404） | [system_requirements §REQ-NF-002a](01_requirements/system_requirements.md#req-nf-002a-評価コストの上限) | t_inoue | 2026-08-09 | `wontfix` | **理由: 当該サイトがフィードを提供していないため修正不能。** 2026-07-26 の疎通確認で 404 が判明し、同日の追加調査で候補6件（`/rss` `/feed` `/rss.xml` `/index.xml` `www.blef.fr/rss/` 等）も全て 404、トップページの HTML にも feed の link 要素なし。運用者確認でもフィード提供なしと判断。**情報源から削除**（14件 → 13件）し、`.ref/feeds.yaml` に経緯をコメントとして残した。`.ref/spec.md` AC-4（全件疎通確認）は「確認の上で除外した」形で満たす |
 | TASK-028 | `OQ` | 1回の実行で評価する件数の上限を決める | [system_requirements §OQ-007](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | 状態消失時の全件再処理を防ぐ安全弁。超過分の次回持ち越し設計とあわせて判断 |
 | TASK-029 | `OQ` | 全文配信フィードの要約切り詰め上限（文字数）を決める | [system_requirements §OQ-008](01_requirements/system_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | `gcp-data-analytics` 8,800字 / `ssp-sh` 9,238字。トークン量と判定精度の両面に影響 |
 | TASK-030 | `OQ` | 状態ファイルの形式（SQLite / JSONL / CSV）を決める | [ADR-002 §OQ-001](04_decisions/ADR-002_state_persistence.md#未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-26: **追記専用の JSONL を採用**（→ [ADR-005](04_decisions/ADR-005_state_file_format.md)）。ADR-002 の採用理由「履歴が監査証跡を兼ねる」が SQLite では成立しないことが決め手 |
@@ -267,3 +267,4 @@ R-001 ビジネス課題
 | 2026-07-26 | t_inoue | **ADR-002 / ADR-005 を `accepted` に昇格。** 前提として ADR-002 OQ-005（cron 実行時刻）を決着し月曜 06:17 JST とした（REQ-F-011 / F-002 AC-001 に反映）。TASK-005 / TASK-034 を `resolved`。状態管理の設計が確定し、実装着手の主要ブロッカーが解消 |
 | 2026-07-26 | t_inoue | **ADR-004 を `accepted` に昇格。** OQ-001〜003 を決着（層構造は `domain → adapters` の契約を設ける方針、フィード取得は `httpx` + `feedparser`、依存は下限指定 + `uv.lock`）。**初稿の `defusedxml` 方針は一次情報の調査により撤回** — 未保守（2021年が最終リリース）かつ feedparser が XXE 対策を自前で持つため。真のリスクは SSRF・メモリ枯渇・ReDoS だった。TASK-016 / 055 / 059 / 060 を更新、TASK-062 を登録 |
 | 2026-07-26 | t_inoue | **実装の骨格を導入**（TASK-054 / 055 / 057 を `resolved`）。`pyproject.toml`・`uv.lock`・CI ワークフローを追加し、import-linter の契約2本（4層 + `domain → adapters`）を定義。domain 層に ADR-005 の畳み込み規則と F-001 AC-029 を実装しテストで担保（49件・カバレッジ 99.31%）。TASK-027 は候補6件を疎通確認したが全て 404 のため運用者の確認待ちとして記録 |
+| 2026-07-26 | t_inoue | 運用者確認により `blef-fr` のフィード未提供が確定。情報源から削除し、件数の記載を 14 → 13 に更新（REQ-NF-001 の測定条件・タイムアウト根拠、REQ-NF-002、§5 連携表、F-002 AC-022）。TASK-027 を `wontfix` で閉じ、経緯を `.ref/feeds.yaml` にコメントとして残した |
