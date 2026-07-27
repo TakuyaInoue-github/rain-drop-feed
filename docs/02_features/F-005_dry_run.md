@@ -2,14 +2,15 @@
 id: F-005
 title: 投入せずに選別結果を確認する
 status: draft          # draft | reviewing | approved | deprecated
-version: 0.2.0
-last_updated: 2026-07-26
+version: 0.2.1
+last_updated: 2026-07-28
 owner: t_inoue
 traces:
   upstream:
     - REQ-F-009
   downstream:
-    - SPEC-xxx（未作成）
+    - SPEC-005
+    - SPEC-006
 ---
 
 # F-005: 投入せずに選別結果を確認する
@@ -174,8 +175,8 @@ dry-run がない場合、基準を変更した運用者は通常実行するし
 
 | 仕様ID | 仕様名 | この機能との関係 |
 |---|---|---|
-| SPEC-xxx | CLI インターフェース | 未作成。dry-run の指定方法・オプション体系を定義する |
-| SPEC-xxx | 実行サマリの出力 | 未作成。F-004 と共有する（Rule S-4）。dry-run 時の出力差分を定義する |
+| [SPEC-005](../03_specs/SPEC-005_cli.md) | CLI インターフェースと起動時検証 | dry-run の指定方法と、dry-run 時に省略する起動時検証を定義する |
+| [SPEC-006](../03_specs/SPEC-006_execution_summary.md) | 実行サマリの出力 | F-004 と共有する（Rule S-4）。dry-run 時の出力差分3点を定義する |
 
 ---
 
@@ -193,4 +194,5 @@ dry-run がない場合、基準を変更した運用者は通常実行するし
 | 日付 | 更新者 | バージョン | 内容 |
 |---|---|---|---|
 | 2026-07-26 | t_inoue | 0.1.0 | 初版作成。REQ-F-009 に対応 |
+| 2026-07-28 | t_inoue | 0.2.1 | SPEC-005 / SPEC-006 の追加に伴い §7 関連仕様と `traces.downstream` を実 ID へ更新 |
 | 2026-07-26 | t_inoue | 0.2.0 | 独立レビュー（TASK-020）の指摘を反映。AC-002 に記事の識別子と出力先を明記、AC-003 で「投入数」と「投入対象件数」の語の混在を解消、AC-030 の対象にコレクション ID を追加し LLM API キーを除外、AC-030a（通常実行では失敗する状態の判別）を追加。OQ-002 に検証母集団の欠落の観点を追記 |
