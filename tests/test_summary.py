@@ -246,6 +246,33 @@ def test_未試行件数は投入失敗と別行で出る() -> None:
     assert "投入未試行 5 件" in out
 
 
+def test_投入を試行して全件失敗したとき専用の警告が出る() -> None:
+    """T-030: F-004 AC-016。概況の `投入 0 件` だけでは投入対象0件の週と区別できない。"""
+    summary = _summary(ingested=0, ingest_attempted=3, ingest_failures=3)
+    out = format_summary(summary, run_at=RUN_AT)
+    assert "**投入対象 3 件がすべて失敗しました**" in out
+
+
+def test_投入対象が0件なら全件失敗の警告を出さない() -> None:
+    """T-030 の反証: 「投入0件なら警告」に緩めると新着ゼロの週に誤警告が出る。"""
+    out = format_summary(_summary(ingested=0, ingest_attempted=0), run_at=RUN_AT)
+    assert "すべて失敗しました" not in out
+
+
+def test_打ち切りによる未試行は全件失敗の分母に含めない() -> None:
+    """SPEC-004 フロー #15。1件成功 + 打ち切り5件は「全件失敗」ではない。"""
+    summary = _summary(ingested=1, ingest_attempted=1, ingest_unattempted=5)
+    out = format_summary(summary, run_at=RUN_AT)
+    assert "すべて失敗しました" not in out
+
+
+def test_dry_run_では全件失敗の警告を出さない() -> None:
+    """dry-run では POST を行わないため、この警告は発生しえない。"""
+    summary = _summary(dry_run=True, ingested=3, ingest_attempted=0)
+    out = format_summary(summary, run_at=RUN_AT)
+    assert "すべて失敗しました" not in out
+
+
 # --- T-011: 永続化失敗 -------------------------------------------------------
 
 
@@ -414,25 +441,48 @@ def test_dry_run_では前回比と経過期間を出力しない() -> None:
 def test_通常実行とdry_runのサマリが3点以外は同一構造である() -> None:
     """T-024: dry-run 側への項目追加漏れを検出する（F-005 AC-003 の中核）。"""
     common: dict[str, object] = {
-        "sources": [SourceOutcome("jane-street", fetched=5)],
+        "sources": [
+            SourceOutcome("jane-street", fetched=5),
+            SourceOutcome("netflix-techblog", fetched=0),
+        ],
         "new_entries": 8,
         "evaluated": 8,
         "ingested": 3,
         "score_distribution": {3: 2, 7: 6},
         "cost_usd": 0.021,
         "evaluation_failures": 1,
+        "abandoned": 1,
+        "ingest_failures": 2,
+        "ingest_failure_reasons": {"rate_limited": 2},
+        "ingest_unattempted": 1,
         "deferred": 2,
     }
     normal = format_summary(_summary(**common), run_at=RUN_AT).splitlines()
     dry = format_summary(_summary(dry_run=True, **common), run_at=RUN_AT).splitlines()
 
-    def blocks(lines: list[str]) -> set[str]:
-        """行頭のラベルだけを取り出し、値の差を無視して構成を比較する。"""
-        return {line.split(":")[0].split(" ")[0] for line in lines if line.strip()}
+    def blocks(lines: list[str]) -> set[tuple[int, str]]:
+        """(インデント, 行頭ラベル) を取り出し、値の差を無視して構成を比較する。
+
+        インデントを含めるのは、字下げされた行（情報源別・失敗理由の内訳）を
+        区別するため。行頭トークンのみで比較すると字下げ行がすべて空文字へ潰れ、
+        dry-run 側から情報源行が丸ごと消えても検出できない。
+        """
+        out: set[tuple[int, str]] = set()
+        for line in lines:
+            if not line.strip():
+                continue
+            indent = len(line) - len(line.lstrip())
+            out.add((indent, line.strip().split(":")[0].split(" ")[0]))
+        return out
 
     # dry-run 固有（判定結果ブロック）と通常固有（前回実行から）を除いて一致する
-    assert blocks(normal) - blocks(dry) <= {"前回実行から"}
-    assert blocks(dry) - blocks(normal) <= {"判定結果:"}
+    assert blocks(normal) - blocks(dry) <= {(0, "前回実行から")}
+    assert blocks(dry) - blocks(normal) <= {
+        (0, "判定結果"),
+        (2, "[投入]"),
+        (2, "[見送]"),
+        (2, "[失敗]"),
+    }
 
 
 # --- T-025 / T-026: セキュリティ ---------------------------------------------

@@ -146,7 +146,7 @@ R-001 ビジネス課題
 | [SPEC-003](03_specs/SPEC-003_entry_evaluation.md) | エントリ評価（トリアージ） | `draft` | t_inoue | F-001, F-005 |
 | [SPEC-004](03_specs/SPEC-004_ingestion.md) | 収集レイヤーへの投入・タグ付与 | `draft` | t_inoue | F-001 |
 | [SPEC-005](03_specs/SPEC-005_cli.md) | CLI インターフェースと起動時検証 | `draft` | t_inoue | F-001, F-002, F-005 |
-| [SPEC-006](03_specs/SPEC-006_execution_summary.md) | 実行サマリの出力 | `draft` | t_inoue | F-004, F-005 |
+| [SPEC-006](03_specs/SPEC-006_execution_summary.md) | 実行サマリの出力 | `draft`（レビュー反映済み v0.2.0） | t_inoue | F-004, F-005 |
 
 ---
 
@@ -183,7 +183,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 64 | 4 | 26 | 1 |
+| 65 | 4 | 27 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -271,10 +271,12 @@ R-001 ビジネス課題
 | TASK-089 | `OQ` | HTTP 400 の失敗分類を見直す（無限リトライ経路の解消） | [SPEC-003 §OQ-011](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | 2026-07-27: **`spec_error` を第3の分類として立て、実行を即座に中止する**（SPEC-003 フロー #15 / OQ-011 resolved）。F への AC 新設の要否は引き続き検討 |
 | TASK-090 | `OQ` | `--dry-run` 以外に必要な CLI オプションがあるか決める | [SPEC-005 §OQ-004](03_specs/SPEC-005_cli.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-28: **増やさない。** SPEC-006 を執筆した結果、サマリの出力先・書式はいずれも引数での切り替えを要さないと確認できた。`--json`（TASK-010）・`NO_COLOR`（TASK-011）が決着すれば増えうるが、それは各タスクの管轄。SPEC-005 §4 の「オプションを増やさない方針」を維持する |
 | TASK-091 | `DOC` | SPEC-005 の独立レビューを実施する | [SPEC-005 §完了チェックリスト](03_specs/SPEC-005_cli.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-28 実施。**正典が自己矛盾していた**（`CONFIG_ERROR` が「処理本体を開始する前に決定する」としながら SPEC-003 の HTTP 400 を発生源に含めていた）。`SPEC_ERROR = 4` を新設して解消。優先順位の根拠の誤り・集約漏れ3件・C-I01 が要求する規定の欠落も指摘され全件反映 |
-| TASK-092 | `DOC` | SPEC-006 の独立レビューを実施する | [SPEC-006 §完了チェックリスト](03_specs/SPEC-006_execution_summary.md#完了チェックリスト) | t_inoue | 2026-08-09 | `open` | サマリは無人実行における唯一の異常検知手段であり（F-004 §2）、誤った値を出しても運用者は気づけない。F-004 / F-005 の全 AC に受け口があるかの検証が主眼 |
+| TASK-092 | `DOC` | SPEC-006 の独立レビューを実施する | [SPEC-006 §完了チェックリスト](03_specs/SPEC-006_execution_summary.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-28 実施。必須6件。**F-004 AC-016（投入の全件失敗をサマリで識別）を担保する規定が SPEC-006 に存在しなかった**（SPEC-004 は明示的に SPEC-006 へ委譲していたため宙に浮いていた）。**T-024 の反証可能性が実際には成立していなかった**（字下げ行が比較で潰れ、dry-run から情報源行が丸ごと消えても通過した）。失敗系6行の書式が §9 に不在で実装がラベルを独自に発明していた点、dry-run の差分が実際は4点だった点も指摘され全件反映 |
 | TASK-093 | `OQ` | dry-run の明細行数に上限を設けるか決める | [SPEC-006 §OQ-002](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 新規が上限（暫定200件 → TASK-028）に達すると200行出力される。**初回実行では全件が新規になる**ため必ず顕在化する |
-| TASK-094 | `OQ` | 失敗理由の文字列に外部由来の値をどこまで含めるか決める | [SPEC-006 §OQ-004](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 例外メッセージやレスポンス本文に秘匿情報が混入する経路がないか確認する。F-004 AC-031 に直結（→ SPEC-006 T-026） |
+| TASK-094 | `OQ` | 失敗理由の文字列に外部由来の値をどこまで含めるか決める | [SPEC-006 §OQ-004](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 例外メッセージやレスポンス本文に秘匿情報が混入する経路がないか確認する。**2026-07-28 追記: dry-run 明細の URL・タイトルも対象**（§5 は URL を識別子として切り詰めないと規定しており、フィード配信 URL のクエリにトークンが含まれる経路が残る）。F-004 AC-031 に直結（→ SPEC-006 T-026） |
 | TASK-095 | `OQ` | 前回比で新規追加された情報源をどう表示するか決める | [SPEC-006 §OQ-006](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | `feeds.yaml` の編集後の初回実行で必ず発生する。暫定は `(前回 -)`（初回実行と同じ表示になり区別できない点が論点） |
+| TASK-096 | `OQ` | dry-run で秘匿情報が未設定である旨の警告をサマリ本体へ出すか決める | [SPEC-006 §OQ-007](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | F-005 AC-030a。現状は SPEC-005 フロー #6 が標準エラーへ出す。`--dry-run > result.txt` で保存した運用者は見落とし、**AC-030a が防ごうとした落とし穴そのものに落ちる**。AC-014 / AC-015 と同じ論理 |
+| TASK-097 | `OQ` | F-005 の境界値 AC-020 / AC-021 / AC-022 の担保先を決める | [SPEC-006 §OQ-008](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | SPEC-006 と SPEC-004 のどちらのテスト観点にも「対応AC」として現れていない |
 | TASK-017 | `CL` | シークレット（トークン・Secrets）の定期棚卸しを行うか判断する | [enterprise_checklist §C-G03](01_requirements/enterprise_checklist.md#33-アクセス管理ガバナンス) | t_inoue | 2026-09-30 | `open` | 対象が数個のため優先度は低い |
 | TASK-018 | `CL` | 復旧手順（状態ファイル喪失時・重複投入発生時）を Runbook 化するか判断する | [enterprise_checklist §O-I02](01_requirements/enterprise_checklist.md#42-インシデント対応) | t_inoue | 2026-08-23 | `open` | 発生確率が低くない事象であり手順化の価値がある |
 | TASK-019 | `DOC` | 要件定義の承認後、F-xxx（機能）を作成する | [system_requirements §8](01_requirements/system_requirements.md#8-トレーサビリティマトリクス) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 に F-001〜005 を作成。トレーサビリティマトリクスの「機能」列を更新済み |
@@ -284,7 +286,7 @@ R-001 ビジネス課題
 | TASK-047 | `OQ` | フィード保持件数上限による取りこぼしを許容するか、欠落検知を設けるか | [F-002 §OQ-004](02_features/F-002_scheduled_execution.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 実測で複数フィードが取得20件で頭打ち。2〜3週間の実行欠落で取りこぼしが確定的に発生し、AC-011 の「恒久化しない」が原理的に満たせない |
 | TASK-048 | `OQ` | サマリの「直近の実行における取得件数」の取得元を決める | [F-004 §OQ-004](02_features/F-004_execution_summary.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-27: **状態ブランチに `runs.jsonl`（実行単位の記録）を追加する。** エントリ単位の `state.jsonl` では (a)「新着0件で実行された週」と「実行されなかった週」の区別、(b) 情報源ごとの取得件数（既処理分を含む）が復元できず、F-004 AC-003a を原理的に満たせないため。dry-run では追記しない。SPEC-002 v0.4.0 / ADR-005 OQ-003 に反映済み |
 | TASK-040 | `OQ` | 蓄積した評価記録が全損した場合の扱いを決める | [F-003 §OQ-003](02_features/F-003_verify_triage_criteria.md#8-未解決事項-open-questions) | t_inoue | 2026-08-09 | `in-progress` | 2026-07-26: 要件定義 REQ-NF-003 の RPO を「重複排除の情報: 1週間 / 評価記録: 復旧不能」に分割し、非対称性を明記した。**許容するかの結論を F-003 AC-005 に反映してから `approved` へ上げる** |
-| TASK-041 | `OQ` | 実行サマリの評価コストの算出方法を決める | [F-004 §OQ-003](02_features/F-004_execution_summary.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | API 応答のトークン数から算出するか、件数からの概算に留めるか。REQ-NF-002a の検知手段 |
+| TASK-041 | `OQ` | 実行サマリの評価コストの算出方法を決める | [F-004 §OQ-003](02_features/F-004_execution_summary.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | API 応答のトークン数から算出するか、件数からの概算に留めるか。REQ-NF-002a の検知手段。**2026-07-28 追記:** `usage` が得られない実装だと `evaluated > 0` でも `cost_usd` が 0.0 になりうる。その場合コスト超過検知が「$0.000 なのに評価 200 件」の形で静かに壊れるため、算出失敗を警告する規定の要否も一緒に決める（SPEC-006 OQ-001） |
 | TASK-042 | `OQ` | dry-run の出力範囲を決める（スコアと判定のみか、付与予定タグまで再現するか） | [F-005 §OQ-001](02_features/F-005_dry_run.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | - |
 | TASK-043 | `OQ` | dry-run の反復実行に伴う評価コストに上限を設けるか | [F-005 §OQ-002](02_features/F-005_dry_run.md#8-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 記録を更新しない仕様のため、繰り返すたびに同じ記事の評価コストが発生する。TASK-028 の件数上限と併せて判断 |
 | TASK-044 | `OQ` | 成功基準「週20本以上」の判定単位を決める（単週 or 平均） | [business_requirements §OQ-005](01_requirements/business_requirements.md#9-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | §3.3 が「登録数が週によって振れる」ことを症状として挙げているため、単週判定では自然なばらつきを失敗と誤判定しうる。TASK-002 と一体で判断 |
@@ -318,3 +320,4 @@ R-001 ビジネス課題
 | 2026-07-27 | t_inoue | **SPEC-005（CLI と起動時検証）を追加。** 終了コードの正典を §5 に集約し、優先順位（`CONFIG_ERROR` > `STATE_PERSIST_FAILED` > `INGEST_ALL_FAILED` > `OK`）と dry-run 時に返りうる値を規定。SPEC-001 / SPEC-004 から委譲された起動時検証を統合し、他4本の終了コードの数値直書きを正典への参照へ統一。TASK-090 / 091 を登録 |
 | 2026-07-28 | t_inoue | SPEC-005 の独立レビュー（TASK-091）を実施し必須7件を反映。**正典の自己矛盾を解消**するため `SPEC_ERROR = 4` を新設し、運用者が是正すべき設定不備と実装が是正すべき要求不正を終了コードで区別できるようにした。優先順位の根拠を「次回実行の入力を壊す障害を優先する」へ訂正（旧根拠は F-001 AC-006 に反していた）。`feeds.yaml` の構造検証を SPEC-005 へ一元化し、`application_checklist` C-I01 を SPEC-005 §5 への参照へ更新 |
 | 2026-07-28 | t_inoue | [SPEC-006](03_specs/SPEC-006_execution_summary.md)（実行サマリの出力）を追加し、**SPEC 層6本が出揃った**。執筆の過程で `RunSummary` に F-004 / F-005 の AC が要求する受け口が5つ欠けていることが判明し（失敗理由の内訳・未試行件数・前回比・dry-run 明細・未完了標識）、`contract/model.py` に追加。整形処理を domain 層に実装しテスト48件で担保（計106件・カバレッジ 99.69%）。TASK-090 を `resolved`、TASK-092〜095 を登録 |
+| 2026-07-28 | t_inoue | SPEC-006 の独立レビュー（TASK-092）を実施し必須6件を反映。**F-004 AC-016（投入の全件失敗をサマリで識別）を担保する規定がどの SPEC にも存在しなかった**ため、フロー #17 と `ingest_attempted` を新設。**T-024 の反証可能性が実際には成立していなかった**（字下げ行が比較で潰れ、dry-run から情報源行が消えても通過）ため比較方法を是正しミューテーションで検証。失敗系6行の書式を §9 に正典化。TASK-096 / 097 を登録 |
