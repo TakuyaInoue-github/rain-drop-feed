@@ -57,6 +57,7 @@ class TestExitCodes:
             exit_codes.INGEST_ALL_FAILED,
             exit_codes.CONFIG_ERROR,
             exit_codes.STATE_PERSIST_FAILED,
+            exit_codes.SPEC_ERROR,
         ]
         assert all(c != 0 for c in codes)
 
@@ -66,5 +67,10 @@ class TestExitCodes:
             exit_codes.INGEST_ALL_FAILED,
             exit_codes.CONFIG_ERROR,
             exit_codes.STATE_PERSIST_FAILED,
+            exit_codes.SPEC_ERROR,
         ]
         assert len(set(codes)) == len(codes)
+
+    def test_運用者の設定ミスと実装バグが別のコードになること(self) -> None:
+        """SPEC-005 §5: 是正の主体が異なるため値を分ける。"""
+        assert exit_codes.CONFIG_ERROR != exit_codes.SPEC_ERROR
