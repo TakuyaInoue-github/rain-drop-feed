@@ -183,7 +183,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 62 | 4 | 24 | 1 |
+| 61 | 4 | 25 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -255,7 +255,7 @@ R-001 ビジネス課題
 | TASK-073 | `OQ` | `feeds.yaml` の `verified: false` を実行時にどう扱うか決める | [SPEC-001 §OQ-005](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 現在13件すべてが `false`。SPEC-001 は値を無視して取得する記述にしている |
 | TASK-074 | `OQ` | 新規エントリ側の飢餓の扱いを決める | [SPEC-001 §OQ-006](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 上限超過が続くと `feeds.yaml` 末尾の情報源が継続的に持ち越されうる。SPEC-002 は再評価側の飢餓を `evaluated_at` 昇順で防いだが、新規側は取得順のまま |
 | TASK-075 | `DOC` | 用語「取得順」を `00_glossary.md` に追記する | [SPEC-001 §OQ-007](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 情報源の定義順 × フィード内掲載順の二段の順序。SPEC-002 が依存する概念 |
-| TASK-076 | `OQ` | `feeds.yaml` が存在しない・不正なときの挙動を規定する AC を F に新設する | [SPEC-001 §OQ-008](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | **F-001〜005 のどこにも AC がない。** F-002 AC-012 は秘匿情報のみが対象。AC-012 の範囲を「実行に必要な設定」へ拡張するか新設する |
+| TASK-076 | `OQ` | `feeds.yaml` が存在しない・不正なときの挙動を規定する AC を F に新設する | [SPEC-001 §OQ-008](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | **F-001〜005 のどこにも AC がない。** F-002 AC-012 は秘匿情報のみが対象。**2026-07-28: 検証の責務は SPEC-005 の起動時検証へ一元化済み**（SPEC-001 OQ-008 resolved）。残るのは「`CONFIG_ERROR` で中止する」という振る舞いに対応する AC の新設のみ。TASK-087 と同一論点 |
 | TASK-077 | `OQ` | API キーが無効（401/403）な場合の起動時疎通確認の要否を決める | [SPEC-003 §OQ-004](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | **F-001 AC-030 は「未設定」しか検知対象にしていない。** 「無効」を弾くなら AC-030 を「有効であること」へ拡張する必要がある |
 | TASK-078 | `OQ` | タイトルと要約の両方が空のエントリの扱いを規定する AC を F に新設する | [SPEC-003 §OQ-005](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | **F-001 AC-023 は「要約が空ならタイトルのみで評価」までしか定めていない。** SPEC-003 は「API を呼ばずスキップ」と書いたが上位に根拠がない |
 | TASK-079 | `OQ` | 評価1件あたりの API タイムアウト値を決める | [SPEC-003 §OQ-006](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | F-001 AC-016 は「規定時間で打ち切る」と述べるが具体値がない。TASK-064（フィード取得30秒の根拠）と同種の問題 |
@@ -270,7 +270,7 @@ R-001 ビジネス課題
 | TASK-088 | `OQ` | 提案タグの一部だけが不正だったときの部分採用の是非を F の AC として決める | [SPEC-003 §OQ-010](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | F-001 AC-027 は「空だったとき」までしか定めていない。構造化出力により発生しない見込みで優先度は低い |
 | TASK-089 | `OQ` | HTTP 400 の失敗分類を見直す（無限リトライ経路の解消） | [SPEC-003 §OQ-011](03_specs/SPEC-003_entry_evaluation.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `open` | 2026-07-27: **`spec_error` を第3の分類として立て、実行を即座に中止する**（SPEC-003 フロー #15 / OQ-011 resolved）。F への AC 新設の要否は引き続き検討 |
 | TASK-090 | `OQ` | `--dry-run` 以外に必要な CLI オプションがあるか決める | [SPEC-005 §OQ-004](03_specs/SPEC-005_cli.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | TASK-010（`--json`）・TASK-011（`NO_COLOR`）が決着すると引数が増えうる。SPEC-006 の執筆時に判断する |
-| TASK-091 | `DOC` | SPEC-005 の独立レビューを実施する | [SPEC-005 §完了チェックリスト](03_specs/SPEC-005_cli.md#完了チェックリスト) | t_inoue | 2026-08-09 | `open` | 終了コードの正典であり、他5本が参照する。優先度が高い |
+| TASK-091 | `DOC` | SPEC-005 の独立レビューを実施する | [SPEC-005 §完了チェックリスト](03_specs/SPEC-005_cli.md#完了チェックリスト) | t_inoue | 2026-08-09 | `resolved` | 2026-07-28 実施。**正典が自己矛盾していた**（`CONFIG_ERROR` が「処理本体を開始する前に決定する」としながら SPEC-003 の HTTP 400 を発生源に含めていた）。`SPEC_ERROR = 4` を新設して解消。優先順位の根拠の誤り・集約漏れ3件・C-I01 が要求する規定の欠落も指摘され全件反映 |
 | TASK-017 | `CL` | シークレット（トークン・Secrets）の定期棚卸しを行うか判断する | [enterprise_checklist §C-G03](01_requirements/enterprise_checklist.md#33-アクセス管理ガバナンス) | t_inoue | 2026-09-30 | `open` | 対象が数個のため優先度は低い |
 | TASK-018 | `CL` | 復旧手順（状態ファイル喪失時・重複投入発生時）を Runbook 化するか判断する | [enterprise_checklist §O-I02](01_requirements/enterprise_checklist.md#42-インシデント対応) | t_inoue | 2026-08-23 | `open` | 発生確率が低くない事象であり手順化の価値がある |
 | TASK-019 | `DOC` | 要件定義の承認後、F-xxx（機能）を作成する | [system_requirements §8](01_requirements/system_requirements.md#8-トレーサビリティマトリクス) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 に F-001〜005 を作成。トレーサビリティマトリクスの「機能」列を更新済み |
@@ -312,3 +312,4 @@ R-001 ビジネス課題
 | 2026-07-27 | t_inoue | SPEC-001 / 003 / 004 の独立レビュー（TASK-086）を実施し、**単独で解消できる15件を反映**。一次情報の再確認で SPEC-004 §8 の事実誤認3件を訂正（Test token は失効しない / `title` max 1000 / `excerpt` max 10000）。SPEC-003 に `should_record` を追加して SPEC-002 §6 との対応を機械的に検証可能にした。TASK-087〜089 を登録。**3本にまたがる4件は未着手** |
 | 2026-07-27 | t_inoue | **3本にまたがる4件を決着。** (1) 同一 URL の一意化を SPEC-002 の責務と確定（R-002 違反の経路を解消）、(2) 401/403 打ち切り後の未試行エントリは記録せず持ち越す、(3) 投入の失敗理由は状態に記録せずサマリで集計、(4) HTTP 400 を `spec_error` として即時中止（無限リトライ経路を解消）。SPEC-001〜004 を改訂 |
 | 2026-07-27 | t_inoue | **SPEC-005（CLI と起動時検証）を追加。** 終了コードの正典を §5 に集約し、優先順位（`CONFIG_ERROR` > `STATE_PERSIST_FAILED` > `INGEST_ALL_FAILED` > `OK`）と dry-run 時に返りうる値を規定。SPEC-001 / SPEC-004 から委譲された起動時検証を統合し、他4本の終了コードの数値直書きを正典への参照へ統一。TASK-090 / 091 を登録 |
+| 2026-07-28 | t_inoue | SPEC-005 の独立レビュー（TASK-091）を実施し必須7件を反映。**正典の自己矛盾を解消**するため `SPEC_ERROR = 4` を新設し、運用者が是正すべき設定不備と実装が是正すべき要求不正を終了コードで区別できるようにした。優先順位の根拠を「次回実行の入力を壊す障害を優先する」へ訂正（旧根拠は F-001 AC-006 に反していた）。`feeds.yaml` の構造検証を SPEC-005 へ一元化し、`application_checklist` C-I01 を SPEC-005 §5 への参照へ更新 |
