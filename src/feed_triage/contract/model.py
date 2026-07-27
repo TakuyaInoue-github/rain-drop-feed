@@ -118,6 +118,13 @@ class RunSummary:
     両者は排他であり（dry-run では POST を行わない）、サマリ上は文言で区別する
     （`投入` / `投入対象` → SPEC-006 §5）。
     """
+    ingest_attempted: int = 0
+    """実際に POST を試行した件数（F-004 AC-016 / SPEC-004 フロー #15）。
+
+    `ingest_unattempted` を含まない。全件失敗の判定はこの値を分母とする。
+    `ingested + ingest_failures` で導出せず独立して受け取るのは、SPEC-006 が
+    集計しない原則に従うため（SPEC-006 §1）。
+    """
     ingest_failures: int = 0
     ingest_failure_reasons: dict[str, int] = field(default_factory=dict)
     """SPEC-004 の失敗理由コード → 件数（F-004 AC-012）。

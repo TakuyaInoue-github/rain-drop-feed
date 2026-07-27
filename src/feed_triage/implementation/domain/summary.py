@@ -72,7 +72,21 @@ def _overview(summary: RunSummary) -> str:
     lines = [head]
     if _all_sources_failed(summary.sources):
         lines.append(f"**全 {len(summary.sources)} 情報源の取得に失敗しました**")
+    if _all_ingests_failed(summary):
+        lines.append(f"**投入対象 {summary.ingest_attempted} 件がすべて失敗しました**")
     return "\n".join(lines)
+
+
+def _all_ingests_failed(summary: RunSummary) -> bool:
+    """投入の全件失敗か（F-004 AC-016 / SPEC-004 フロー #15）。
+
+    概況の `投入 0 件` だけでは「投入対象が0件だった週」と区別できないため、
+    専用の警告を出す。分母は `ingest_attempted` であり、401/403 の打ち切りで
+    未試行となった分は含めない。dry-run では POST を行わないため発生しない。
+    """
+    if summary.dry_run:
+        return False
+    return summary.ingest_attempted > 0 and summary.ingested == 0
 
 
 def _all_sources_failed(sources: list[SourceOutcome]) -> bool:
