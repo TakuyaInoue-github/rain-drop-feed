@@ -139,19 +139,29 @@ class TestEvaluationTargetPriority:
     def test_新規だけで上限に達したら再評価は次回に持ち越される(self) -> None:
         state = self._state_with_failure("https://example.com/old")
         new = [f"https://example.com/new{i}" for i in range(3)]
-        got = select_evaluation_targets([*new, "https://example.com/old"], state, max_failures=3, limit=3)
+        got = select_evaluation_targets(
+            [*new, "https://example.com/old"], state, max_failures=3, limit=3
+        )
         assert got == new
         assert "https://example.com/old" not in got
 
     def test_再評価対象はevaluated_atが古い順に選ばれる(self) -> None:
         """SPEC-002 §6: 飢餓を構造的に防ぐ。取得順に依存しない。"""
-        newest = record("https://example.com/newest", at=BASE + timedelta(days=14), score=None, failure_count=1)
+        newest = record(
+            "https://example.com/newest", at=BASE + timedelta(days=14), score=None, failure_count=1
+        )
         oldest = record("https://example.com/oldest", at=BASE, score=None, failure_count=1)
-        middle = record("https://example.com/middle", at=BASE + timedelta(days=7), score=None, failure_count=1)
+        middle = record(
+            "https://example.com/middle", at=BASE + timedelta(days=7), score=None, failure_count=1
+        )
         state = fold_records([newest, oldest, middle])
         # 入力順は新しい順だが、選定は古い順になる
         got = select_evaluation_targets(
-            ["https://example.com/newest", "https://example.com/middle", "https://example.com/oldest"],
+            [
+                "https://example.com/newest",
+                "https://example.com/middle",
+                "https://example.com/oldest",
+            ],
             state,
             max_failures=3,
         )
@@ -162,7 +172,9 @@ class TestEvaluationTargetPriority:
         ]
 
     def test_上限があるとき最も古い再評価対象が選ばれる(self) -> None:
-        newest = record("https://example.com/newest", at=BASE + timedelta(days=14), score=None, failure_count=1)
+        newest = record(
+            "https://example.com/newest", at=BASE + timedelta(days=14), score=None, failure_count=1
+        )
         oldest = record("https://example.com/oldest", at=BASE, score=None, failure_count=1)
         state = fold_records([newest, oldest])
         got = select_evaluation_targets(

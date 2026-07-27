@@ -84,9 +84,24 @@ class SourceOutcome:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class EntryVerdict:
+    """dry-run の明細行1件（F-005 AC-002 / SPEC-006 §4）。"""
+
+    url: str
+    title: str = ""
+    final_score: int | None = None
+    """補正後スコア。**0〜10 に丸めない**（SPEC-004 §4 の値域規定）。None は評価失敗。"""
+    will_ingest: bool = False
+
+
 @dataclass
 class RunSummary:
-    """1回の実行のサマリ（REQ-F-008 / F-004）。"""
+    """1回の実行のサマリ（REQ-F-008 / F-004）。
+
+    実行開始時に構築し、各段階が埋める（SPEC-006 §2）。途中で例外が発生しても
+    それまでに埋まった範囲が残るため、部分的なサマリを出力できる（F-004 AC-013）。
+    """
 
     sources: list[SourceOutcome] = field(default_factory=list)
     new_entries: int = 0
@@ -98,10 +113,31 @@ class RunSummary:
     一時的な障害（evaluation_failures）と恒久的な取りこぼしを区別するために持つ。
     """
     ingested: int = 0
+    """通常実行では投入に成功した件数、dry-run では投入対象と判定された件数。
+
+    両者は排他であり（dry-run では POST を行わない）、サマリ上は文言で区別する
+    （`投入` / `投入対象` → SPEC-006 §5）。
+    """
     ingest_failures: int = 0
+    ingest_failure_reasons: dict[str, int] = field(default_factory=dict)
+    """SPEC-004 の失敗理由コード → 件数（F-004 AC-012）。
+
+    状態には記録せずサマリでのみ集計する（SPEC-004 §4）。
+    """
+    ingest_unattempted: int = 0
+    """401/403 による打ち切りで POST を試行しなかった件数（SPEC-004 §4）。
+
+    成功にも失敗にも数えない。INGEST_ALL_FAILED の分母にも含めない。
+    """
     deferred: int = 0
     score_distribution: dict[int, int] = field(default_factory=dict)
     cost_usd: float = 0.0
     dry_run: bool = False
     state_persist_error: str | None = None
     weeks_since_previous_run: float | None = None
+    previous_sources: dict[str, int] = field(default_factory=dict)
+    """前回実行の情報源別取得件数（F-004 AC-003a）。空なら初回実行として `-` を表示する。"""
+    entries: list[EntryVerdict] = field(default_factory=list)
+    """dry-run の明細（F-005 AC-002）。通常実行では空のまま。"""
+    completed: bool = True
+    """処理本体が最後まで到達したか。False なら未完了の標識を付ける（F-004 AC-013）。"""
