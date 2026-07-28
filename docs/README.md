@@ -183,7 +183,7 @@ R-001 ビジネス課題
 
 | `open` | `in-progress` | `resolved` | `wontfix` |
 |---|---|---|---|
-| 45 | 4 | 47 | 1 |
+| 44 | 4 | 49 | 1 |
 
 > サマリーの件数は一覧を更新するたびに手動で合わせる。
 
@@ -252,7 +252,7 @@ R-001 ビジネス課題
 | TASK-070 | `OQ` | 状態ブランチへの書き込み権限を起動時に事前検証するか決める | [SPEC-002 §OQ-006](03_specs/SPEC-002_state_management.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | ADR-002 が「実行末尾に push」を選んだ帰結として、権限不備は評価コストを全部払った後に発覚する（REQ-NF-002a）。事前検証するなら F-001 AC-030 の対象を拡張する |
 | TASK-071 | `OQ` | HTTP リダイレクトの追従方針を決める（回数上限・https→http のダウングレード・ホスト制限） | [SPEC-001 §OQ-003](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-28: **追従する（上限3回）。`https` → `http` のダウングレードは拒否**。移転（301）は実運用で起こり追従しないと静かに失敗し続ける。一方ダウングレードを許すと ADR-004 補遺B が「`feeds.yaml` の固定値だから該当しない」として退けた **SSRF 判定の前提が崩れる**（追従先は固定値ではない）。リダイレクト先ホストの制限は行わない（移転先は事前に知りえない） |
 | TASK-072 | `OQ` | 全情報源の取得に失敗した実行を非0終了とすべきか決める | [SPEC-001 §OQ-004](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-28: **`FETCH_ALL_FAILED = 5` を新設して非0で終了する**（→ F-001 AC-017a）。GitHub 公式ドキュメントで**スケジュール実行の失敗通知がワークフロー作成者へ送られる**ことを確認したため、非0にすれば運用者はその週のうちに気づける。REQ-NF-003 の「投入0件の2回連続」は運用者がサマリを見るまで検知が働かないのに対し、全件失敗は供給停止が**確定した**状態で推測を要さない。`INGEST_ALL_FAILED` と分けるのは、どちらの段階で途切れたかを終了コードだけで判別するため（F-002 AC-010）。**情報源の定義が0件の実行は `OK` のまま** |
-| TASK-073 | `OQ` | `feeds.yaml` の `verified: false` を実行時にどう扱うか決める | [SPEC-001 §OQ-005](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 現在13件すべてが `false`。SPEC-001 は値を無視して取得する記述にしている |
+| TASK-073 | `OQ` | `feeds.yaml` の `verified: false` を実行時にどう扱うか決める | [SPEC-001 §OQ-005](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-28: **警告を出さない（現状維持）**。TASK-027 で13件すべてが `verified: true` になり、`false` のまま実行される状況が当面存在しない。`verified` は運用者が疎通確認の済否を記録する注記であり、実行の可否を左右させると「未確認の情報源は取得しない」という別の振る舞いを暗黙に導入することになる |
 | TASK-074 | `OQ` | 新規エントリ側の飢餓の扱いを決める | [SPEC-001 §OQ-006](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | 上限超過が続くと `feeds.yaml` 末尾の情報源が継続的に持ち越されうる。SPEC-002 は再評価側の飢餓を `evaluated_at` 昇順で防いだが、新規側は取得順のまま |
 | TASK-075 | `DOC` | 用語「取得順」を `00_glossary.md` に追記する | [SPEC-001 §OQ-007](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-28: `00_glossary.md` のドメイン用語へ追記済み。定義は SPEC-001 §4 を正典とし、glossary からリンクする |
 | TASK-076 | `OQ` | `feeds.yaml` が存在しない・不正なときの挙動を規定する AC を F に新設する | [SPEC-001 §OQ-008](03_specs/SPEC-001_feed_fetching.md#11-未解決事項-open-questions) | t_inoue | 2026-08-09 | `resolved` | 2026-07-28: **F-001 AC-030a を新設**（既定の振る舞いをそのまま AC 化。振る舞いの変更なし）。`feeds.yaml` / `profile.md` が読めないとき、取得・評価を開始する前に失敗し部分的な処理を行わない。空の情報源リストや基準なしで続行しない。TASK-087 と同一の AC で解決 |
@@ -277,6 +277,7 @@ R-001 ビジネス課題
 | TASK-095 | `OQ` | 前回比で新規追加された情報源をどう表示するか決める | [SPEC-006 §OQ-006](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | `feeds.yaml` の編集後の初回実行で必ず発生する。暫定は `(前回 -)`（初回実行と同じ表示になり区別できない点が論点） |
 | TASK-096 | `OQ` | dry-run で秘匿情報が未設定である旨の警告をサマリ本体へ出すか決める | [SPEC-006 §OQ-007](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `open` | F-005 AC-030a。現状は SPEC-005 フロー #6 が標準エラーへ出す。`--dry-run > result.txt` で保存した運用者は見落とし、**AC-030a が防ごうとした落とし穴そのものに落ちる**。AC-014 / AC-015 と同じ論理 |
 | TASK-097 | `OQ` | F-005 の境界値 AC-020 / AC-021 / AC-022 の担保先を決める | [SPEC-006 §OQ-008](03_specs/SPEC-006_execution_summary.md#11-未解決事項-open-questions) | t_inoue | 2026-08-23 | `resolved` | 2026-07-28: **判定は SPEC-004、表示は SPEC-006**。3件はいずれも「投入可否の判定結果」であり SPEC-004 が T-014 / T-015 / T-018 / T-029 で既に担保していた（F-001 の AC 番号で追跡されていたため F-005 側から見えなかっただけ）。dry-run と通常実行で判定ロジックは同一のため別観点は不要。両 SPEC の該当テスト観点に F-005 の AC 番号を併記して追跡可能にした |
+| TASK-098 | `IMPL` | 全情報源の疎通確認と `verified` の更新（`.ref/spec.md` AC-4） | [.ref/spec.md](.ref/spec.md) AC-4 | t_inoue | 2026-08-09 | `resolved` | 2026-07-28: **13件すべて疎通確認済み**（HTTP 200 + 有効な RSS/Atom、計198エントリ）。`feeds.yaml` の `verified` を全件 `true` に更新し、`snowflake-blog` の URL 要確認 TODO も解消（`https://www.snowflake.com/feed/` で20件取得できることを確認）。**`hn-databricks` は初回 HTTP 502 / 2回目タイムアウトだったが再試行で成功** — hnrss.org 側の断続的な不調であり定義の誤りではない。個別失敗が他を止めない設計（F-001 AC-011）が実地で機能した |
 | TASK-017 | `CL` | シークレット（トークン・Secrets）の定期棚卸しを行うか判断する | [enterprise_checklist §C-G03](01_requirements/enterprise_checklist.md#33-アクセス管理ガバナンス) | t_inoue | 2026-09-30 | `open` | 対象が数個のため優先度は低い |
 | TASK-018 | `CL` | 復旧手順（状態ファイル喪失時・重複投入発生時）を Runbook 化するか判断する | [enterprise_checklist §O-I02](01_requirements/enterprise_checklist.md#42-インシデント対応) | t_inoue | 2026-08-23 | `open` | 発生確率が低くない事象であり手順化の価値がある |
 | TASK-019 | `DOC` | 要件定義の承認後、F-xxx（機能）を作成する | [system_requirements §8](01_requirements/system_requirements.md#8-トレーサビリティマトリクス) | t_inoue | 2026-08-23 | `resolved` | 2026-07-26 に F-001〜005 を作成。トレーサビリティマトリクスの「機能」列を更新済み |
@@ -325,3 +326,4 @@ R-001 ビジネス課題
 | 2026-07-28 | t_inoue | **実装をブロックしていた OQ 6件を決着**（TASK-062 / 071 / 065 / 083 / 082 / 080）。3人のレビュアーが揃って「実装前に決める必要がある」と判定したもの。サイズ上限 10 MB・リダイレクト上限3回とダウングレード拒否・`#score-{n}` は補正後・タグは `#` なしで送信・401/403 は打ち切って持ち越し・プロンプト注入は役割分離で緩和し残余リスクを受容。**SPEC-001/003/004 で実装を止める OQ は解消した** |
 | 2026-07-28 | t_inoue | **実測待ちだった数値 OQ 6件を暫定値で確定**（TASK-028 / 053 / 024 / 029 / 079 / 084）。いずれも根拠と**見直し条件**をセットで記述し、`draft` のまま実装に入って「どの SPEC が合意済みか」が失われる状態を避けた。評価件数200件・失敗上限3回は `domain/state.py` に定数として実装（テスト3件追加、計113件） |
 | 2026-07-28 | t_inoue | **「F に AC がない」系5件を解消**（TASK-072 / 076 / 078 / 087 / 088）。SPEC が振る舞いを決めているのに上位の F に対応する AC がなかったトレーサビリティ上の欠落。4件は既定の振る舞いをそのまま AC 化（F-001 AC-023a / AC-027a / AC-030a）。TASK-072 のみ設計判断を伴い、**`FETCH_ALL_FAILED = 5` を新設して全情報源の取得失敗を非0終了とした**（GitHub がスケジュール実行の失敗を作成者へ通知することを一次情報で確認したため、非0にすれば供給停止にその週のうちに気づける） |
+| 2026-07-28 | t_inoue | **実装に着手。adapters 層の最初の2本（設定読み込み・フィード取得）を実装**。`config.py`（SPEC-005 フロー #11/#12）と `fetch.py`（SPEC-001）で、10 MB のサイズ上限・リダイレクト上限3回・https ダウングレード拒否を実装。テスト48件を追加し計163件（カバレッジ 96.27%）。**実データで13情報源すべての疎通を確認**（198エントリ）し TASK-027 / TASK-073 を `resolved` に |

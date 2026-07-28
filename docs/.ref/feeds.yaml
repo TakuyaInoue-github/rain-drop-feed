@@ -1,6 +1,6 @@
 # feed-triage: 購読フィード定義 v0
 # weight: LLMスコアへの事前補正 (+1/0/-1)。一次情報の設計解説が多いソースを優遇
-# verified: 実装時に HTTP 200 + 有効なRSS/Atom であることを確認すること
+# verified: HTTP 200 + 有効なRSS/Atom であることを確認済み（2026-07-28 実測、13件すべて疎通）
 
 sources:
   # ===== 公式ベンダーブログ =====
@@ -8,57 +8,57 @@ sources:
     url: https://aws.amazon.com/blogs/big-data/feed/
     weight: 0
     tags: [aws]
-    verified: false
+    verified: true
 
   - name: aws-database
     url: https://aws.amazon.com/blogs/database/feed/
     weight: 0
     tags: [aws]
-    verified: false
+    verified: true
 
   - name: aws-architecture
     url: https://aws.amazon.com/blogs/architecture/feed/
     weight: 0
     tags: [aws]
-    verified: false
+    verified: true
 
   - name: aws-machine-learning
     url: https://aws.amazon.com/blogs/machine-learning/feed/
     weight: -1   # 量が多く告知比率が高いため事前減点
     tags: [aws, ml]
-    verified: false
+    verified: true
 
   - name: gcp-data-analytics
     url: https://cloudblog.withgoogle.com/products/data-analytics/rss/
     weight: 0
     tags: [gcp]
-    verified: false
+    verified: true
 
   - name: databricks-blog
     url: https://www.databricks.com/feed
     weight: +1   # 主戦場。Community Technical Blog は RSS 有無を実装時調査
     tags: [databricks]
-    verified: false
+    verified: true
 
   - name: snowflake-blog
-    url: https://www.snowflake.com/feed/   # TODO: 正確なフィードURL要確認
+    url: https://www.snowflake.com/feed/
     weight: 0
     tags: [snowflake]
-    verified: false
+    verified: true
 
   # ===== 企業テックブログ (非ベンダー) =====
   - name: netflix-tech
     url: https://netflixtechblog.com/feed
     weight: +1
     tags: [eng-blog]
-    verified: false
+    verified: true
 
   # ===== 個人ブログ (データエンジニアリング著名人) =====
   - name: ssp-sh          # Simon Späti
     url: https://ssp.sh/index.xml
     weight: +1
     tags: [personal]
-    verified: false
+    verified: true
 
   # blef-fr (Christophe Blefari, https://blef.fr) は 2026-07-26 に削除した。
   # 元URL https://blef.fr/blog/rss は HTTP 404。候補6件（/rss, /feed, /rss.xml,
@@ -70,26 +70,26 @@ sources:
     url: https://vutr.substack.com/feed
     weight: +1
     tags: [personal]
-    verified: false
+    verified: true
 
   # ===== コミュニティ評価済み (Hacker News) =====
   - name: hn-databricks
     url: https://hnrss.org/newest?q=databricks&points=50
     weight: 0
     tags: [hn]
-    verified: false
+    verified: true
 
   - name: hn-lakehouse
     url: https://hnrss.org/newest?q=lakehouse&points=50
     weight: 0
     tags: [hn]
-    verified: false
+    verified: true
 
   - name: hn-data-engineering
     url: https://hnrss.org/newest?q=%22data+engineering%22&points=50
     weight: 0
     tags: [hn]
-    verified: false
+    verified: true
 
 # 実装メモ:
 # - weight は LLM スコアに加算後、閾値 (5) と比較する
