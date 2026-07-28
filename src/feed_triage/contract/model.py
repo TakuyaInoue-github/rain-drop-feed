@@ -5,6 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+SCORE_MIN = 0
+SCORE_MAX = 10
+"""評価スコアの値域（REQ-F-003）。
+
+`domain`（判定）と `adapters`（永続化時の丸め）の**双方が参照する**ため
+contract 層に置く。adapters → domain の import は禁じられており（ADR-004）、
+domain 側に置くと adapters で値を重複定義することになる。
+"""
+
 
 @dataclass(frozen=True)
 class Source:
