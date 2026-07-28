@@ -14,6 +14,22 @@ from datetime import datetime
 
 from feed_triage.contract.model import StateRecord
 
+DEFAULT_EVALUATION_LIMIT = 200
+"""1回の実行で評価する件数の上限（F-001 AC-025 / SPEC-002 OQ-001）。
+
+**暫定値。実測後に見直す**（TASK-028）。実測の週31〜49件・上振れ100件に対し
+2倍の余裕を持ち、**上限に達すること自体が異常の兆候**として機能する。
+評価1件 2.7〜4.8秒の実測から200件で9〜16分となり REQ-NF-001 の30分に収まる。
+"""
+
+DEFAULT_MAX_FAILURES = 3
+"""評価失敗の打ち切り上限。週数ではなく**総試行回数**（F-001 AC-015 / AC-019）。
+
+**暫定値。実測後に見直す**（TASK-053）。実行内リトライ1回（SPEC-003 OQ-002）と
+組み合わさるため実質2週分の追跡にあたる。一時的な API 障害は週をまたげば
+解消することが多く、恒久的に壊れたエントリを3週以上追いかけてもコストが増えるだけ。
+"""
+
 
 def fold_records(records: Iterable[StateRecord]) -> dict[str, StateRecord]:
     """レコード列を url ごとの現在状態に畳み込む。

@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 
 from feed_triage.contract.model import StateRecord
 from feed_triage.implementation.domain.state import (
+    DEFAULT_EVALUATION_LIMIT,
+    DEFAULT_MAX_FAILURES,
     fold_records,
     is_processed,
     select_evaluation_targets,
@@ -194,3 +196,33 @@ class TestEvaluationTargetPriority:
             limit=99,
         )
         assert len(got) == 2
+
+
+# --- 暫定値の定数（2026-07-28 に確定。実測後に見直す） --------------------
+
+
+def test_評価件数の上限は200件() -> None:
+    """TASK-028。実測の週31〜49件・上振れ100件に対し2倍の余裕を持つ。
+
+    上限に達すること自体が異常の兆候として機能する値であり、
+    小さすぎると平常時に持ち越しが発生して兆候として使えなくなる。
+    """
+    assert DEFAULT_EVALUATION_LIMIT == 200
+
+
+def test_失敗回数の上限は3回() -> None:
+    """TASK-053。実行内リトライ1回と組み合わさり実質2週分の追跡になる。"""
+    assert DEFAULT_MAX_FAILURES == 3
+
+
+def test_上限件数が既定値のとき超過分が持ち越される() -> None:
+    """定数が select_evaluation_targets の limit として機能すること。"""
+    records: dict[str, StateRecord] = {}
+    urls = [f"https://example.com/{i}" for i in range(DEFAULT_EVALUATION_LIMIT + 5)]
+    selected = select_evaluation_targets(
+        urls,
+        records,
+        max_failures=DEFAULT_MAX_FAILURES,
+        limit=DEFAULT_EVALUATION_LIMIT,
+    )
+    assert len(selected) == DEFAULT_EVALUATION_LIMIT
