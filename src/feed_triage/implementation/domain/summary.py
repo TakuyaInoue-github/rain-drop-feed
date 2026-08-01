@@ -134,16 +134,23 @@ def _metrics_block(summary: RunSummary) -> str:
     ):
         if count:
             lines.append(f"{label} {count} 件")
+        if label == "評価失敗" and count and summary.evaluation_failure_reasons:
+            # **理由を出さないと無人実行で原因が追えない**（F-002 AC-010）。
+            # 実地の dry-run で40件全滅した際、件数だけでは認証失効か
+            # スキーマ不正かを切り分けられなかった（TASK-100）
+            lines.append(f"  失敗理由: {_reasons(summary.evaluation_failure_reasons)}")
         if label == "投入失敗" and count and summary.ingest_failure_reasons:
-            reasons = " ".join(
-                f"{code}: {n}" for code, n in sorted(summary.ingest_failure_reasons.items())
-            )
-            lines.append(f"  失敗理由: {reasons}")
+            lines.append(f"  失敗理由: {_reasons(summary.ingest_failure_reasons)}")
 
     lines.append(f"評価コスト: ${summary.cost_usd:.3f} ({summary.evaluated} 件)")
     if not summary.dry_run:
         lines.append(_elapsed(summary.weeks_since_previous_run))
     return "\n".join(lines)
+
+
+def _reasons(counts: dict[str, int]) -> str:
+    """理由コード → 件数を1行に畳む。件数の多い順、同数なら名前順で決定的に並べる。"""
+    return " ".join(f"{code}: {n}" for code, n in sorted(counts.items(), key=lambda p: (-p[1], p[0])))
 
 
 def _score_distribution(summary: RunSummary) -> str:

@@ -116,6 +116,13 @@ class RunSummary:
     new_entries: int = 0
     evaluated: int = 0
     evaluation_failures: int = 0
+    evaluation_failure_reasons: dict[str, int] = field(default_factory=dict)
+    """評価失敗の分類（`OutcomeKind` の値）→ 件数（TASK-100）。
+
+    **件数だけでは無人実行で原因を切り分けられない**（F-002 AC-010）。実地の
+    dry-run で40件全滅した際、認証失効なのかスキーマ不正なのかが判別できず、
+    ログを別途取り直す必要があった。
+    """
     abandoned: int = 0
     """失敗回数が上限に達し、以降再評価されなくなった記事の件数（F-004 AC-011a）。
 
