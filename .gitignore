@@ -10,3 +10,8 @@ htmlcov/
 dist/
 build/
 .env
+
+# エディタのスワップ・バックアップ
+*.swp
+*.swo
+*~
