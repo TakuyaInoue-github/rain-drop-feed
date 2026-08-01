@@ -16,9 +16,10 @@ import anthropic
 import httpx
 import pytest
 
-from feed_triage.contract.model import Entry
+from feed_triage.contract.model import SCORE_MAX, SCORE_MIN, Entry
 from feed_triage.implementation.adapters.evaluate import (
     MAX_SUMMARY_CHARS,
+    RESPONSE_SCHEMA,
     RETRY_ATTEMPTS,
     Evaluator,
     OutcomeKind,
@@ -389,3 +390,40 @@ def test_クライアントは_max_retries_を明示指定する(monkeypatch: py
 
     assert captured["max_retries"] == module.MAX_RETRIES
     assert captured["api_key"] == "sk-ant-test"
+
+
+class TestResponseSchema:
+    """構造化出力のスキーマ制約（TASK-102）。"""
+
+    def test_score_に値域制約を付けない(self) -> None:
+        """**実 API で確認済み**（2026-08-01）: integer への `minimum` /
+        `maximum` は構造化出力でサポートされず、指定すると HTTP 400 になる。
+
+        「値域を宣言できるなら宣言すべき」という直感で再追加されやすいが、
+        追加すると**全件が spec_error になり評価が全滅する**。
+        """
+        props = RESPONSE_SCHEMA["properties"]
+        assert isinstance(props, dict)
+        score = props["score"]
+        assert isinstance(score, dict)
+
+        assert "minimum" not in score, "API が拒否する（HTTP 400）"
+        assert "maximum" not in score, "API が拒否する（HTTP 400）"
+
+    def test_値域はdescriptionでモデルへ伝える(self) -> None:
+        """制約が外れた分、値域の意図は自然言語で残す。"""
+        props = RESPONSE_SCHEMA["properties"]
+        assert isinstance(props, dict)
+        score = props["score"]
+        assert isinstance(score, dict)
+
+        assert str(SCORE_MIN) in str(score.get("description", ""))
+        assert str(SCORE_MAX) in str(score.get("description", ""))
+
+    def test_値域の担保はコード側が行う(self) -> None:
+        """スキーマで縛れない以上、`_is_valid_score` が唯一の防御線になる
+        （F-001 AC-029）。もともとその前提で設計されている。"""
+        from feed_triage.implementation.adapters.evaluate import _is_valid_score
+
+        assert _is_valid_score(SCORE_MAX + 1) is False
+        assert _is_valid_score(SCORE_MIN - 1) is False

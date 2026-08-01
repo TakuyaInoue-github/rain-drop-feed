@@ -64,7 +64,16 @@ MAX_SUMMARY_CHARS = 4000
 RESPONSE_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
-        "score": {"type": "integer", "minimum": SCORE_MIN, "maximum": SCORE_MAX},
+        # **`minimum` / `maximum` は使えない** — 構造化出力の JSON Schema は
+        # integer に対する値域制約をサポートせず、指定すると HTTP 400 になる
+        # （2026-08-01 に実 API で確認 → TASK-102）。値域は description で
+        # モデルへ伝え、**実際の担保は `_is_valid_score` が行う**。
+        # もともと「範囲外スコアは残る」前提で設計されており（F-001 AC-029）、
+        # スキーマ側の制約は補助でしかなかったため、防御の要は変わらない。
+        "score": {
+            "type": "integer",
+            "description": f"{SCORE_MIN}〜{SCORE_MAX} の整数",
+        },
         "reason": {"type": "string"},
         "suggested_tags": {"type": "array", "items": {"type": "string"}},
     },
