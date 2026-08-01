@@ -10,7 +10,9 @@
 
 from __future__ import annotations
 
+import html
 import json
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Protocol, TypeGuard
@@ -281,8 +283,10 @@ def _build_prompt(entry: Entry) -> str | None:
     （SPEC-003 §7 プロンプト注入）。`system` には決して連結しない。
     完全な遮断ではないが、被害はスコアの歪みに限定され事後検知もできる。
     """
-    title = entry.title.strip()
-    summary = entry.summary.strip()[:MAX_SUMMARY_CHARS]
+    title = _plain_text(entry.title)
+    # **タグ除去を切り詰めより先に行う。** 逆にするとマークアップが文字数を
+    # 食い、実際の本文が上限より短く切られる
+    summary = _plain_text(entry.summary)[:MAX_SUMMARY_CHARS]
     if not title and not summary:
         return None
 
@@ -294,6 +298,33 @@ def _build_prompt(entry: Entry) -> str | None:
         f"source: {entry.source_name}\n"
         f"{_ENTRY_CLOSE}"
     )
+
+
+_TAG_PATTERN = re.compile(r"<[^>]*>")
+_URL_PATTERN = re.compile(r"\bhttps?://\S+", re.IGNORECASE)
+_WHITESPACE_PATTERN = re.compile(r"\s+")
+
+
+def _plain_text(value: str) -> str:
+    """HTML 断片を平文へ均す（TASK-104）。
+
+    RSS の要約は HTML を含むことが多く、hnrss.org に至っては本文を持たず
+    `<p>Article URL: <a href=...>` だけを返す。生のまま渡すと、
+
+    1. タグと属性がトークンを浪費する（REQ-NF-002a）
+    2. **`href` の URL が注入の足場になる** — 区切りの内側にあるとはいえ、
+       記事の内容ではない文字列を素通しする理由がない
+
+    完全な HTML パーサは使わない。要約の整形に厳密さは要らず、依存を
+    増やすほどの利得がないため（ADR-004 の依存を絞る方針）。
+    """
+    without_tags = _TAG_PATTERN.sub(" ", value)
+    unescaped = html.unescape(without_tags)
+    # **タグを剥がすだけでは足りない。** `<a href="x">x</a>` はリンクの
+    # 表示テキストとしても URL を持つため、属性を消しても本文側に残る。
+    # URL はトリアージの判断材料にならず、注入の足場にしかならない
+    without_urls = _URL_PATTERN.sub(" ", unescaped)
+    return _WHITESPACE_PATTERN.sub(" ", without_urls).strip()
 
 
 def _payload_of(response: Any) -> dict[str, Any] | None:
