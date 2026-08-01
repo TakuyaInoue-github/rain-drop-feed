@@ -482,6 +482,21 @@ def test_評価対象が0件なら評価の全件失敗としない() -> None:
     assert outcome.exit_code == exit_codes.OK
 
 
+def test_取得の全滅と評価の全滅は同時に成立しない() -> None:
+    """SPEC-005 §5 の優先順位の**前提**（T-026）。
+
+    取得が全滅すれば評価対象が0件になり、`EVALUATE_ALL_FAILED` の条件
+    （対象が1件以上）は成立しない。両者が同時に成立するのは「取得は一部
+    成功したが評価は全滅した」場合のみであり、そのとき運用者が見るべきは
+    評価側の障害である。**この前提が崩れると優先順位の根拠が失われる。**
+    """
+    failed = [SourceOutcome("example", error="接続できません")]
+    outcome = run(options(), adapters(fetch=FakeFetcher(entries=[], outcomes=failed)))
+
+    assert outcome.summary.new_entries == 0, "取得全滅なら評価対象は0件"
+    assert outcome.exit_code == exit_codes.FETCH_ALL_FAILED
+
+
 def test_全情報源の取得に失敗すれば_FETCH_ALL_FAILED() -> None:
     """SPEC-001 フロー #18 / TASK-072。"""
     failed = [SourceOutcome("example", error="接続できません")]
