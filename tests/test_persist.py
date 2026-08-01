@@ -16,6 +16,7 @@ from feed_triage.implementation.adapters.persist import (
     MAX_PUSH_ATTEMPTS,
     STATE_BRANCH,
     PersistError,
+    load_persisted,
     persist_state,
 )
 
@@ -266,3 +267,71 @@ def test_競合が解消しなければ上限まで試行して失敗する(
     with pytest.raises(PersistError, match="状態の保存に失敗しました"):
         persist_state(repo, {"state.jsonl": '{"url":"a"}\n'})
     assert attempts == MAX_PUSH_ATTEMPTS
+
+
+# --- 状態ブランチからの読み出し（フロー #2） ---------------------------------
+
+
+def test_状態ブランチから内容を読み出せる(repo: Path, remote: Path) -> None:
+    """**実地の Actions 実行で発覚（2026-08-01 / TASK-112）。**
+
+    書き込みは状態ブランチ、読み込みは CWD のファイルという非対称があり、
+    **CI では毎回まっさらな checkout のため状態が読めず全件が新規になっていた**
+    （冪等性 R-002 が本番で成立していなかった）。ローカルでは前回実行が
+    ファイルを残すため気づけなかった。
+    """
+    persist_state(repo, {"state.jsonl": '{"url":"a"}\n'})
+
+    files = load_persisted(repo, ["state.jsonl"])
+
+    assert files["state.jsonl"] == '{"url":"a"}\n'
+
+
+def test_複数ファイルをまとめて読み出せる(repo: Path, remote: Path) -> None:
+    persist_state(repo, {"state.jsonl": '{"url":"a"}\n', "runs.jsonl": '{"run_at":"x"}\n'})
+
+    files = load_persisted(repo, ["state.jsonl", "runs.jsonl"])
+
+    assert files["state.jsonl"] == '{"url":"a"}\n'
+    assert files["runs.jsonl"] == '{"run_at":"x"}\n'
+
+
+def test_状態ブランチが無ければ空を返す(repo: Path) -> None:
+    """初回実行。**例外にしない** — 状態がないことは異常ではない。"""
+    assert load_persisted(repo, ["state.jsonl"]) == {}
+
+
+def test_ブランチにファイルが無ければ欠落として返す(repo: Path, remote: Path) -> None:
+    """`runs.jsonl` だけ後から増えた場合など。片方だけでも読める。"""
+    persist_state(repo, {"state.jsonl": '{"url":"a"}\n'})
+
+    files = load_persisted(repo, ["state.jsonl", "runs.jsonl"])
+
+    assert "state.jsonl" in files
+    assert "runs.jsonl" not in files
+
+
+def test_2回の永続化がすべて読み出せる(repo: Path, remote: Path) -> None:
+    """追記が累積すること（ADR-005）。"""
+    persist_state(repo, {"state.jsonl": '{"url":"a"}\n'})
+    persist_state(repo, {"state.jsonl": '{"url":"b"}\n'})
+
+    body = load_persisted(repo, ["state.jsonl"])["state.jsonl"]
+
+    assert body.splitlines() == ['{"url":"a"}', '{"url":"b"}']
+
+
+def test_読み戻した内容をそのまま渡すと行が重複する(repo: Path, remote: Path) -> None:
+    """**`persist_state` は追記である**ことを固定する（ADR-005）。
+
+    読み戻した全文をそのまま渡すと既存行が二重に積まれる。呼び出し側は
+    **今回の増分だけ**を渡さなければならない（→ `cli.py` の `_Store`）。
+    この非対称は TASK-112 の修正で踏みやすい罠であり、明示的に固定する。
+    """
+    persist_state(repo, {"state.jsonl": '{"url":"a"}\n'})
+    whole = load_persisted(repo, ["state.jsonl"])["state.jsonl"]
+
+    persist_state(repo, {"state.jsonl": whole + '{"url":"b"}\n'})
+
+    lines = remote_lines(remote)
+    assert lines.count('{"url":"a"}') == 2, "全文を渡すと重複する（＝増分のみを渡すこと）"
