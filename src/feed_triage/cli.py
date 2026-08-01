@@ -137,17 +137,39 @@ class _Store:
 
     def __init__(self, repo: Path) -> None:
         self.repo = repo
-        self._pending_state = ""
-        self._pending_runs = ""
+        self._restored = False
+        self._offsets: dict[str, int] = {}
+
+    def _restore(self) -> None:
+        """状態ブランチの内容を作業ディレクトリへ展開する（SPEC-002 フロー #2）。
+
+        **これを行わないと冪等性が成立しない。** CI はまっさらな checkout から
+        始まるため、状態ブランチから読み戻さないと毎回「記録なし＝全件新規」
+        となり、同じ記事を毎週再評価・重複投入する（R-002 違反 → TASK-112）。
+        ローカルでは前回実行がファイルを残すため、この欠落は表面化しなかった。
+        """
+        if self._restored:
+            return
+        self._restored = True
+        files = persist.load_persisted(self.repo, [STATE_PATH.name, RUNS_PATH.name])
+        for name, body in files.items():
+            Path(name).write_text(body, encoding="utf-8")
 
     def load_state(self) -> list[StateRecord]:
+        self._restore()
         records, _ = store.load_state(STATE_PATH)
         return records
 
     def load_runs(self) -> list[RunRecord]:
+        self._restore()
         return store.load_runs(RUNS_PATH)
 
     def append(self, records: list[StateRecord], run_record: RunRecord | None) -> None:
+        """今回分を追記する。**増分の位置を覚えておく**（→ `persist`）。"""
+        self._offsets = {
+            name: path.stat().st_size if path.exists() else 0
+            for name, path in (("state.jsonl", STATE_PATH), ("runs.jsonl", RUNS_PATH))
+        }
         store.append_records(STATE_PATH, records)
         if run_record is not None:
             store.append_run(RUNS_PATH, run_record)
@@ -157,12 +179,19 @@ class _Store:
 
         **失敗は握り潰さない** — 記録できないまま投入を続けると、次回実行で
         重複投入（R-002 違反）が確定する。
+
+        **`persist_state` は追記である**（ADR-005）。読み戻した全文を渡すと
+        既存行が二重に積まれるため、**今回の増分だけ**を送る。
         """
-        files = {
-            name: path.read_text(encoding="utf-8")
-            for name, path in (("state.jsonl", STATE_PATH), ("runs.jsonl", RUNS_PATH))
-            if path.exists()
-        }
+        files: dict[str, str] = {}
+        for name, path in (("state.jsonl", STATE_PATH), ("runs.jsonl", RUNS_PATH)):
+            if not path.exists():
+                continue
+            # **バイト単位で切る。** `st_size` はバイト数であり、`str` の
+            # 文字数スライスと混ぜると日本語（タイトル・理由）を含む行で
+            # ズレて**行の途中から切り出され、壊れた JSON を push する**
+            raw = path.read_bytes()[self._offsets.get(name, 0) :]
+            files[name] = raw.decode("utf-8")
         persist.persist_state(self.repo, files)
 
 
