@@ -1,0 +1,89 @@
+name: weekly
+
+# 週1回の無人実行（F-002 AC-001）。
+#
+# **毎時0分を避けて 17 分にずらしている。** GitHub Actions は高負荷時に
+# scheduled workflow をドロップすることを公式に明記しており、0分は最も
+# 混雑する（F-002 OQ-001 / ADR-002 OQ-005 の決定）。
+on:
+  schedule:
+    # 日曜 21:17 UTC = 月曜 06:17 JST
+    - cron: "17 21 * * 0"
+  # 運用者による手動起動（F-002 AC-003）。定期実行と同一の処理を実行する
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "投入を行わず評価結果とサマリのみ出力する"
+        type: boolean
+        default: false
+
+# **状態ブランチへの push に必要**（ADR-002）。`persist.py` が orphan branch
+# `state` へ書き込む。
+#
+# **この権限はブランチ単位に絞れない** — GitHub の permissions はリポジトリ
+# 単位であり、`contents: write` は既定ブランチへの書き込みも技術的に許す。
+# 「既定ブランチへ書き込まない」（F-002 AC-033）を担保しているのは
+# `persist.py` が `state` 以外へ push しないことと、ブランチ保護であって
+# この宣言ではない。
+permissions:
+  contents: write
+
+# 定期実行と手動実行が重なっても**後発を待たせる**（F-002 AC-021）。
+# `cancel-in-progress` は使わない — 実行中の投入を中断すると、投入済みの
+# 記事が記録されないまま終わり、次回に重複投入されうる（R-002 違反）
+concurrency:
+  group: weekly-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # 想定上振れ（13情報源・新規100件）でも収まる値（F-002 AC-022 / REQ-NF-001）。
+    # 実測は170件で約13分。既定の360分では、異常時に無駄な課金が続く
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `persist.py` が `git fetch origin state` を行うため、push 権限を
+          # 持つ資格情報を残す必要がある
+          persist-credentials: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Configure git identity
+        # 状態ブランチへのコミットに必要。**実行者の個人情報を使わない**
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run feed-triage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RAINDROP_TOKEN: ${{ secrets.RAINDROP_TOKEN }}
+          RAINDROP_COLLECTION_ID: ${{ secrets.RAINDROP_COLLECTION_ID }}
+        # サマリは標準出力（SPEC-006）。**終了コードをそのまま伝播させる** —
+        # 握り潰すと全件失敗しても Actions が成功として扱い、無人実行では
+        # 異常に気づけない（F-002 AC-010 / SPEC-005 §5）。
+        #
+        # **`shell: bash` の明示が pipefail を有効にする。** 未指定だと
+        # `bash -e`（pipefail なし）で動き、`| tee` を挟むと `tee` の終了
+        # コード（常に0）が採用されて非0が消える。明示すると
+        # `bash --noprofile --norc -eo pipefail` になる（GitHub 公式仕様）。
+        # **この行を消すと全件失敗が成功扱いになる。**
+        shell: bash
+        run: |
+          uv run feed-triage ${{ inputs.dry_run && '--dry-run' || '' }} \
+            | tee "$RUNNER_TEMP/summary.md"
+
+      - name: Publish summary
+        # 成否によらずサマリを残す（F-002 AC-002 / AC-010）。ログを辿らずに
+        # 実行結果を確認できるようにする
+        if: always()
+        run: cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY" || true
