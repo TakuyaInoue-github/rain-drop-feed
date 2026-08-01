@@ -401,3 +401,162 @@ class TestExitCodes:
         assert (exit_codes.OK, exit_codes.INGEST_ALL_FAILED) == (0, 1)
         assert (exit_codes.CONFIG_ERROR, exit_codes.STATE_PERSIST_FAILED) == (2, 3)
         assert exit_codes.SPEC_ERROR == 4
+
+
+class TestStateRoundTrip:
+    """状態ブランチとの往復（TASK-112）。
+
+    **実地の Actions 実行で発覚した。** 書き込みは状態ブランチ、読み込みは
+    CWD のファイルという非対称があり、CI のようにまっさらな checkout から
+    始まる環境では毎回「記録なし＝全件新規」になっていた。ローカルでは前回
+    実行がファイルを残すため表面化しなかった。
+    """
+
+    def _repo(self, tmp_path: Path) -> Path:
+        import subprocess
+
+        def git(*a: str, cwd: Path) -> None:
+            subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True)
+
+        remote = tmp_path / "r.git"
+        remote.mkdir()
+        git("init", "-q", "--bare", cwd=remote)
+        work = tmp_path / "w"
+        work.mkdir()
+        git("init", "-q", "-b", "main", cwd=work)
+        git("config", "user.email", "t@example.com", cwd=work)
+        git("config", "user.name", "t", cwd=work)
+        (work / "README.md").write_text("x", encoding="utf-8")
+        git("add", "-A", cwd=work)
+        git("commit", "-qm", "init", cwd=work)
+        git("remote", "add", "origin", str(remote), cwd=work)
+        git("push", "-q", "origin", "main", cwd=work)
+        return work
+
+    def test_別チェックアウトでも記録が引き継がれる(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """**冪等性の要（R-002）。** これが壊れると毎週全件を再評価・重複投入する。"""
+        from datetime import datetime, timezone
+
+        from feed_triage.cli import _Store
+        from feed_triage.contract.model import RunRecord, StateRecord
+
+        work = self._repo(tmp_path)
+        monkeypatch.chdir(work)
+
+        record = StateRecord(
+            url="https://example.test/a",
+            title="記事",
+            source_name="s",
+            evaluated_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+            score=8,
+        )
+        first = _Store(work)
+        first.load_state()
+        first.append([record], RunRecord(run_at=datetime(2026, 8, 1, tzinfo=timezone.utc)))
+        first.persist()
+
+        # **ファイルを消して別チェックアウトを再現する**（CI はこの状態で始まる）
+        (work / "state.jsonl").unlink()
+        (work / "runs.jsonl").unlink()
+
+        second = _Store(work)
+        restored = second.load_state()
+
+        assert [r.url for r in restored] == ["https://example.test/a"]
+        assert second.load_runs() != [], "実行記録も引き継がれること"
+
+    def test_2回永続化しても行が重複しない(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`persist_state` は**追記**であり、読み戻した全文を渡すと二重になる。
+
+        `_Store` は今回の増分だけを送ることでこれを避ける。
+        """
+        from datetime import datetime, timezone
+
+        from feed_triage.cli import _Store
+        from feed_triage.contract.model import StateRecord
+
+        work = self._repo(tmp_path)
+        monkeypatch.chdir(work)
+
+        def record(url: str) -> StateRecord:
+            return StateRecord(
+                url=url,
+                title="記事",
+                source_name="s",
+                evaluated_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+                score=8,
+            )
+
+        s1 = _Store(work)
+        s1.load_state()
+        s1.append([record("https://example.test/a")], None)
+        s1.persist()
+
+        (work / "state.jsonl").unlink()
+
+        s2 = _Store(work)
+        s2.load_state()
+        s2.append([record("https://example.test/b")], None)
+        s2.persist()
+
+        # **3回目も別チェックアウトを再現する。** 消さないとローカルに残った
+        # ファイルが読まれ、ブランチ側の内容を検証したことにならない
+        (work / "state.jsonl").unlink()
+
+        s3 = _Store(work)
+        urls = [r.url for r in s3.load_state()]
+        assert sorted(urls) == ["https://example.test/a", "https://example.test/b"]
+        assert len(urls) == 2, f"行が重複している: {urls}"
+
+    def test_日本語を含む記録でも増分が壊れない(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """**マルチバイトで露見するバグの回帰テスト。**
+
+        増分の位置は `st_size`（バイト数）で持つため、`str` の文字数スライスと
+        混ぜると日本語のタイトル・理由を含む行でズレる。**行の途中から切り出され、
+        壊れた JSON が push される**（読み戻し時に捨てられ記録が消える）。
+        ASCII だけのデータでは一致してしまい検出できない。
+        """
+        from datetime import datetime, timezone
+
+        from feed_triage.cli import _Store
+        from feed_triage.contract.model import StateRecord
+
+        work = self._repo(tmp_path)
+        monkeypatch.chdir(work)
+
+        def record(url: str) -> StateRecord:
+            return StateRecord(
+                url=url,
+                title="日本語のタイトル・全角記号を含む記事",
+                source_name="s",
+                evaluated_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+                score=8,
+                reason="設計思想が明確で、実運用の知見が語られている。",
+            )
+
+        s1 = _Store(work)
+        s1.load_state()
+        s1.append([record("https://example.test/a")], None)
+        s1.persist()
+
+        (work / "state.jsonl").unlink()
+
+        s2 = _Store(work)
+        s2.load_state()
+        s2.append([record("https://example.test/b")], None)
+        s2.persist()
+
+        (work / "state.jsonl").unlink()
+
+        restored = _Store(work).load_state()
+        assert sorted(r.url for r in restored) == [
+            "https://example.test/a",
+            "https://example.test/b",
+        ]
+        assert all(r.title.startswith("日本語") for r in restored), "内容が壊れている"
