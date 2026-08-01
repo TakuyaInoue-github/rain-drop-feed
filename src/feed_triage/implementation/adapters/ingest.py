@@ -139,6 +139,12 @@ class IngestResult:
     記録すると処理済み扱いとなり、認証失効1回でその週の投入対象が恒久的に
     失われる（R-001 違反 → フロー #11）。
     """
+    ingested_urls: list[str] = field(default_factory=list)
+    """投入に**成功した** url。呼び出し元が `ingested: true` を立てる（F-001 AC-006）。
+
+    件数だけでは「どの行に立てるか」が決まらないため url を返す。失敗した分に
+    立てると、投入されていない記事が投入済みとして記録され次回も投入されない。
+    """
     entries: list[EntryVerdict] = field(default_factory=list)
     """dry-run の明細（F-005 AC-002 / SPEC-006 §4）。"""
     messages: list[str] = field(default_factory=list)
@@ -293,6 +299,7 @@ class Ingestor:
         status = response.status_code
         if response.is_success:
             result.ingested += 1
+            result.ingested_urls.append(link)
             result.messages.append(f"投入しました: {link}")
             return True
 

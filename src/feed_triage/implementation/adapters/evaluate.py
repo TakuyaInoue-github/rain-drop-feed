@@ -139,13 +139,29 @@ class _Messages(Protocol):
 
 
 class _Client(Protocol):
-    messages: _Messages
+    @property
+    def messages(self) -> _Messages:
+        """読み取り専用として宣言する。
+
+        属性として書くと「代入可能な変数」を要求することになり、実 SDK の
+        read-only な `messages` が構造的部分型として適合しなくなる。
+        """
+        ...
+
+
+ClientLike = anthropic.Anthropic | _Client
+"""`Evaluator` が受け取れるクライアント。
+
+実 SDK の `messages.create` は `@overload` で宣言されており、`**kwargs: Any` を
+取る構造的部分型とは一致しない。**Protocol だけにすると実物が渡せず、実物だけに
+するとテストで差し替えられない**ため、両方を明示的に許す。
+"""
 
 
 class Evaluator:
     """トリアージ基準を保持し、エントリを1件ずつ評価する。"""
 
-    def __init__(self, client: _Client, profile: str) -> None:
+    def __init__(self, client: ClientLike, profile: str) -> None:
         self.client = client
         self.profile = profile
 
