@@ -7,6 +7,8 @@ import pytest
 from feed_triage.implementation.domain.scoring import (
     DEFAULT_HOT_THRESHOLD,
     DEFAULT_THRESHOLD,
+    SCORE_MAX,
+    SCORE_MIN,
     adjust,
     is_hot,
     is_valid_score,
@@ -83,3 +85,16 @@ class TestIsHot:
         between = DEFAULT_THRESHOLD
         assert should_ingest(between) is True
         assert is_hot(between) is False
+
+
+def test_スコアの値域が_contract_層で定義されている() -> None:
+    """adapters と domain の両方が参照するため contract に置く。
+
+    adapters → domain は import-linter が禁じており（ADR-004 設計原則: 決定論的
+    部分と確率的部分の分離）、値域を domain に置くと adapters 側で重複定義するか
+    層構造を崩すかの二択になる。
+    """
+    from feed_triage.contract import model
+
+    assert (model.SCORE_MIN, model.SCORE_MAX) == (0, 10)
+    assert (SCORE_MIN, SCORE_MAX) == (model.SCORE_MIN, model.SCORE_MAX)
