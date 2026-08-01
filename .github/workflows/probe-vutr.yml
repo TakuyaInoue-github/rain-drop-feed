@@ -1,0 +1,33 @@
+name: probe-vutr
+
+# **一時的な調査用ワークフロー（TASK-111）。**
+# vutr-substack が Actions からのみ HTTP 403 になる原因を切り分ける。
+# ローカルからは UA を問わず 200 のため、IP レンジのブロックが疑わしい。
+# 原因が確定したら削除する。
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: UA ごとの応答を確認する
+        run: |
+          probe() {
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 20 ${2:+-A "$2"} https://vutr.substack.com/feed || echo "ERR")
+            printf "  %-14s HTTP %s\n" "$1" "$code"
+          }
+          echo "=== vutr.substack.com/feed ==="
+          probe "現行UA" "feed-triage/0.1 (+https://github.com/TakuyaInoue-github/rain-drop-feed)"
+          probe "ブラウザUA" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          probe "curl既定" ""
+          probe "feedparser風" "feedparser/6.0 +https://github.com/kurtmckee/feedparser/"
+
+          echo "=== 比較対象（Substack 以外）==="
+          othr=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://ssp.sh/index.xml)
+          echo "  ssp.sh        HTTP $othr"
+
+          echo "=== 応答本文の冒頭（403 の理由が書かれている場合がある）==="
+          curl -s --max-time 20 https://vutr.substack.com/feed | head -c 400 || true
+          echo
