@@ -515,3 +515,26 @@ def test_評価コストが小数第3位まで出力される() -> None:
 def test_評価0件でもコスト行を出力する() -> None:
     out = format_summary(_summary(), run_at=RUN_AT)
     assert "評価コスト: $0.000 (0 件)" in out
+
+
+def test_評価失敗の理由がサマリに出る() -> None:
+    """TASK-100: 無人実行では終了コードとサマリだけが原因究明の手がかり。
+
+    理由を落とせば、40件全滅しても「評価失敗 40 件」としか出ず、
+    運用者はログを取り直さないと認証失効かどうかも分からない。
+    """
+    summary = RunSummary(
+        evaluation_failures=40,
+        evaluation_failure_reasons={"api_error": 38, "invalid_value": 2},
+    )
+    text = format_summary(summary, run_at="2026-08-01 10:00")
+
+    assert "評価失敗 40 件" in text
+    assert "api_error: 38" in text
+    assert "invalid_value: 2" in text
+
+
+def test_評価失敗が0なら理由行を出さない() -> None:
+    """平常時のサマリを0件の行で埋めない（SPEC-006 §9）。"""
+    text = format_summary(RunSummary(evaluated=3), run_at="2026-08-01 10:00")
+    assert "失敗理由" not in text

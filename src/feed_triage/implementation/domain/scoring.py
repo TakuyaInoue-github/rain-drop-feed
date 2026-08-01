@@ -7,9 +7,18 @@
 
 from __future__ import annotations
 
-SCORE_MIN = 0
-SCORE_MAX = 10
-"""評価スコアの値域（REQ-F-003）。"""
+from feed_triage.contract.model import SCORE_MAX, SCORE_MIN
+
+__all__ = [
+    "SCORE_MAX",
+    "SCORE_MIN",
+    "DEFAULT_THRESHOLD",
+    "DEFAULT_HOT_THRESHOLD",
+    "is_valid_score",
+    "adjust",
+    "should_ingest",
+    "is_hot",
+]
 
 DEFAULT_THRESHOLD = 5
 """投入可否を分ける閾値の初期値（REQ-F-005。変更には運用者の合意を要する）。"""
