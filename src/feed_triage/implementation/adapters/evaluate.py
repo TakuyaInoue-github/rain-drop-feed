@@ -318,12 +318,15 @@ def _plain_text(value: str) -> str:
     完全な HTML パーサは使わない。要約の整形に厳密さは要らず、依存を
     増やすほどの利得がないため（ADR-004 の依存を絞る方針）。
     """
-    without_tags = _TAG_PATTERN.sub(" ", value)
-    unescaped = html.unescape(without_tags)
+    # **復号を先に行う。** 逆順にすると `&lt;system&gt;` のようなエンコード済みの
+    # 擬似タグがタグ除去をすり抜け、その後の復号で**リテラルなタグへ復元されて
+    # プロンプトへ渡る**（diff-review の指摘 2026-08-01）
+    unescaped = html.unescape(value)
+    without_tags = _TAG_PATTERN.sub(" ", unescaped)
     # **タグを剥がすだけでは足りない。** `<a href="x">x</a>` はリンクの
     # 表示テキストとしても URL を持つため、属性を消しても本文側に残る。
     # URL はトリアージの判断材料にならず、注入の足場にしかならない
-    without_urls = _URL_PATTERN.sub(" ", unescaped)
+    without_urls = _URL_PATTERN.sub(" ", without_tags)
     return _WHITESPACE_PATTERN.sub(" ", without_urls).strip()
 
 
