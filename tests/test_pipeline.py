@@ -408,6 +408,80 @@ def test_投入を試行して全件失敗すれば_INGEST_ALL_FAILED() -> None:
     assert outcome.exit_code == exit_codes.INGEST_ALL_FAILED
 
 
+def test_評価失敗の理由が分類ごとに集計される() -> None:
+    """TASK-100: 件数だけでは無人実行で原因を切り分けられない（F-002 AC-010）。
+
+    実地の dry-run で40件全滅した際、認証失効なのかスキーマ不正なのかを
+    サマリから判別できず、ログを取り直す必要があった。
+    """
+    entries = [entry(f"https://example.test/{i}") for i in range(3)]
+    evaluator = FakeEvaluator(
+        {
+            "https://example.test/0": EvaluationOutcome(OutcomeKind.API_ERROR),
+            "https://example.test/1": EvaluationOutcome(OutcomeKind.API_ERROR),
+            "https://example.test/2": EvaluationOutcome(OutcomeKind.INVALID_VALUE, attempts=2),
+        }
+    )
+
+    outcome = run(
+        options(), adapters(fetch=FakeFetcher(entries=entries), evaluator=evaluator)
+    )
+
+    assert outcome.summary.evaluation_failure_reasons == {"api_error": 2, "invalid_value": 1}
+
+
+def test_評価対象があり全件が評価に失敗すれば非0で終了する() -> None:
+    """**実地の dry-run で発見**（2026-08-01）。API キーが無効で40件全滅したのに
+    終了コードが 0 だった。
+
+    無人実行では終了コードが唯一の異常検知手段であり（F-002 AC-010）、0 を返すと
+    GitHub Actions は成功として通知しない。**供給が完全に途切れているのに
+    運用者が気づけない**状態になる — 取得の全件失敗を非0にした TASK-072 と
+    同じ論理が、評価段階にも当てはまる。
+    """
+    entries = [entry(f"https://example.test/{i}") for i in range(3)]
+    evaluator = FakeEvaluator(
+        {
+            f"https://example.test/{i}": EvaluationOutcome(OutcomeKind.API_ERROR)
+            for i in range(3)
+        }
+    )
+
+    outcome = run(
+        options(), adapters(fetch=FakeFetcher(entries=entries), evaluator=evaluator)
+    )
+
+    assert outcome.summary.evaluation_failures == 3
+    assert outcome.exit_code == exit_codes.EVALUATE_ALL_FAILED
+
+
+def test_一部でも評価に成功していれば正常終了する() -> None:
+    """全件失敗のみを異常とする（REQ-F-010）。1件の障害で週次バッチを止めない。"""
+    entries = [entry("https://example.test/ok"), entry("https://example.test/ng")]
+    evaluator = FakeEvaluator(
+        {"https://example.test/ng": EvaluationOutcome(OutcomeKind.API_ERROR)}
+    )
+
+    outcome = run(
+        options(), adapters(fetch=FakeFetcher(entries=entries), evaluator=evaluator)
+    )
+
+    assert outcome.exit_code == exit_codes.OK
+
+
+def test_評価対象が0件なら評価の全件失敗としない() -> None:
+    """新着のない週を失敗扱いにしない（F-001 AC-022 と同じ論理）。"""
+    known = StateRecord(
+        url="https://example.test/a",
+        title="記事",
+        source_name="example",
+        evaluated_at=NOW - timedelta(days=7),
+        score=8,
+    )
+    outcome = run(options(), adapters(store=FakeStore(records=[known])))
+    assert outcome.exit_code == exit_codes.OK
+
+
 def test_全情報源の取得に失敗すれば_FETCH_ALL_FAILED() -> None:
     """SPEC-001 フロー #18 / TASK-072。"""
     failed = [SourceOutcome("example", error="接続できません")]

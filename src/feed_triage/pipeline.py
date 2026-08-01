@@ -158,7 +158,15 @@ def run(
 
     return RunOutcome(
         summary=summary,
-        exit_code=_exit_code(ingest, evaluated.aborted, persist_error, outcomes, adapters),
+        exit_code=_exit_code(
+            ingest,
+            evaluated.aborted,
+            persist_error,
+            outcomes,
+            adapters,
+            summary,
+            attempted_evaluations=len(targets),
+        ),
         messages=ingest.messages,
     )
 
@@ -213,7 +221,7 @@ def _evaluate_all(
             # API 障害・材料なし。**記録しない**（記録すると処理済み扱いとなり
             # 次回の再評価から漏れる → F-001 AC-015a）
             if outcome.kind is OutcomeKind.API_ERROR:
-                summary.evaluation_failures += 1
+                _count_failure(summary, outcome)
             continue
 
         summary.evaluated += 1
@@ -221,7 +229,7 @@ def _evaluate_all(
         records.append(record)
 
         if outcome.verdict is None:
-            summary.evaluation_failures += 1
+            _count_failure(summary, outcome)
             if is_processed(record, max_failures):
                 # 失敗回数が上限に達し以降再評価されない（F-004 AC-011a）
                 summary.abandoned += 1
@@ -259,6 +267,19 @@ def _evaluate_all(
             )
 
     return _Evaluated(candidates, records, verdicts, aborted=False)
+
+
+def _count_failure(summary: RunSummary, outcome: EvaluationOutcome) -> None:
+    """評価失敗を件数と理由の両方へ計上する（TASK-100）。
+
+    件数だけだと、無人実行で全滅したときに認証失効かスキーマ不正かを
+    切り分けられない（F-002 AC-010）。
+    """
+    summary.evaluation_failures += 1
+    code = outcome.kind.value
+    summary.evaluation_failure_reasons[code] = (
+        summary.evaluation_failure_reasons.get(code, 0) + 1
+    )
 
 
 def _build_record(
@@ -428,6 +449,8 @@ def _exit_code(
     persist_error: str | None,
     outcomes: list[SourceOutcome],
     adapters: Adapters,
+    summary: RunSummary,
+    attempted_evaluations: int,
 ) -> int:
     """終了コードを決定する（SPEC-005 §5 の優先順位表）。
 
@@ -441,6 +464,10 @@ def _exit_code(
     if adapters.sources and outcomes and all(o.error is not None for o in outcomes):
         # 定義0件の実行は含まない（§5 の OK 行）
         return exit_codes.FETCH_ALL_FAILED
+    if attempted_evaluations > 0 and summary.evaluation_failures >= attempted_evaluations:
+        # 評価が全滅した実行（TASK-099）。**取得より下位に置く** — 取得が
+        # 全滅していれば評価対象が0件になり、そちらが根本原因であるため
+        return exit_codes.EVALUATE_ALL_FAILED
     if ingest.all_failed:
         return exit_codes.INGEST_ALL_FAILED
     return exit_codes.OK
