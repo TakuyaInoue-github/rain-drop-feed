@@ -1,0 +1,18 @@
+# diff-review の設定（TASK-056 / ADR-004 後続アクション）
+# https://github.com/TakuyaInoue-github/code-review-toolkits
+#
+# **`docs/**` を除外する。** SPEC 層だけで 2,000 行を超え、バンドルの大半が
+# ドキュメントになる。ドキュメントのレビューは独立コンテキストの
+# `independent_review.md` が担っており（docs/SKILL.md）、責務が重複する。
+#
+# `state.jsonl` / `runs.jsonl` は実行時に生成される追記専用の状態であり、
+# レビュー対象にならない。
+
+exclude:
+  - "docs/**"
+  - "**/*.lock"
+  - "state.jsonl"
+  - "runs.jsonl"
+
+fail_on: important
+max_findings: 10

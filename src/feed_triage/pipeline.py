@@ -99,6 +99,13 @@ class _Evaluated:
     records: list[StateRecord]
     verdicts: list[EntryVerdict]
     aborted: bool
+    attempted: int = 0
+    """**実際に評価を試みた件数**（SKIPPED を除く）。
+
+    `EVALUATE_ALL_FAILED` の分母。`len(targets)` を使うと、材料がなく
+    評価しなかった SKIPPED が混ざるだけで全滅を見逃す（diff-review の
+    指摘 2026-08-01。TASK-099 で塞いだ穴の再発経路）。
+    """
 
 
 @dataclass
@@ -165,7 +172,7 @@ def run(
             outcomes,
             adapters,
             summary,
-            attempted_evaluations=len(targets),
+            attempted_evaluations=evaluated.attempted,
         ),
         messages=ingest.messages,
     )
@@ -209,13 +216,18 @@ def _evaluate_all(
     candidates: list[Candidate] = []
     records: list[StateRecord] = []
     verdicts: list[EntryVerdict] = []
+    attempted = 0
 
     for target in targets:
         outcome = adapters.evaluator.evaluate(target)
 
         if outcome.kind is OutcomeKind.SPEC_ERROR:
             # 実装が是正すべき要求不正。続けても同じ結果になるため中止する
-            return _Evaluated(candidates, records, verdicts, aborted=True)
+            return _Evaluated(candidates, records, verdicts, aborted=True, attempted=attempted)
+
+        if outcome.kind is not OutcomeKind.SKIPPED:
+            # SKIPPED は失敗ではなく「評価しなかった」件（F-001 AC-023a）
+            attempted += 1
 
         if not outcome.should_record:
             # API 障害・材料なし。**記録しない**（記録すると処理済み扱いとなり
@@ -266,7 +278,7 @@ def _evaluate_all(
                 )
             )
 
-    return _Evaluated(candidates, records, verdicts, aborted=False)
+    return _Evaluated(candidates, records, verdicts, aborted=False, attempted=attempted)
 
 
 def _count_failure(summary: RunSummary, outcome: EvaluationOutcome) -> None:
