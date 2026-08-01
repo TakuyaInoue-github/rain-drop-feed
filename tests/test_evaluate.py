@@ -23,6 +23,7 @@ from feed_triage.implementation.adapters.evaluate import (
     RETRY_ATTEMPTS,
     Evaluator,
     OutcomeKind,
+    _build_prompt,
 )
 
 PROFILE = "# トリアージ基準\n\n設計解説を優遇する。\n"
@@ -427,3 +428,93 @@ class TestResponseSchema:
 
         assert _is_valid_score(SCORE_MAX + 1) is False
         assert _is_valid_score(SCORE_MIN - 1) is False
+
+
+class TestSummaryNormalization:
+    """要約の正規化（TASK-104）。
+
+    hnrss.org は要約に記事本文を含まず、`<p>Article URL: <a href=...>` 等の
+    HTML 断片だけを返す。生の HTML をプロンプトへ渡すと、(1) タグがトークンを
+    浪費し、(2) 属性値が注入の足場になる。
+    """
+
+    def test_HTMLタグが除去される(self) -> None:
+        entry = Entry(
+            url="https://x.test/a",
+            title="題",
+            summary='<p>本文の要約</p>\n<p>続き</p>',
+            published_at=None,
+            source_name="s",
+        )
+        prompt = _build_prompt(entry)
+        assert prompt is not None
+        assert "<p>" not in prompt
+        assert "本文の要約" in prompt
+
+    def test_リンクのURLが除去される(self) -> None:
+        """`<a href>` の属性値は**記事の内容ではない**。
+
+        untrusted な区切りの内側とはいえ、URL を素通しすると注入の足場を
+        増やすだけで、トリアージの判断材料にはならない。
+        """
+        entry = Entry(
+            url="https://x.test/a",
+            title="題",
+            summary='<p>Article URL: <a href="https://evil.test/x">https://evil.test/x</a></p>',
+            published_at=None,
+            source_name="s",
+        )
+        prompt = _build_prompt(entry)
+        assert prompt is not None
+        assert "evil.test" not in prompt
+
+    def test_HTMLエンティティが復元される(self) -> None:
+        entry = Entry(
+            url="https://x.test/a",
+            title="題",
+            summary="A &amp; B &lt;tag&gt; &quot;q&quot;",
+            published_at=None,
+            source_name="s",
+        )
+        prompt = _build_prompt(entry)
+        assert prompt is not None
+        assert "A & B" in prompt
+        assert "&amp;" not in prompt
+
+    def test_タグを除いた結果が空なら要約なしとして扱う(self) -> None:
+        """タグだけの要約は情報がない。空文字と同じ扱いにする。"""
+        entry = Entry(
+            url="https://x.test/a",
+            title="題",
+            summary="<p></p><br/>",
+            published_at=None,
+            source_name="s",
+        )
+        prompt = _build_prompt(entry)
+        assert prompt is not None
+        assert "summary: \n" in prompt or prompt.count("summary: ") == 1
+
+    def test_タイトルも要約も実質空なら評価しない(self) -> None:
+        """F-001 AC-023a: タグだけの要約でタイトルが空なら材料がない。"""
+        entry = Entry(
+            url="https://x.test/a",
+            title="   ",
+            summary="<p></p>",
+            published_at=None,
+            source_name="s",
+        )
+        assert _build_prompt(entry) is None
+
+    def test_切り詰めはタグ除去後に行う(self) -> None:
+        """タグを含んだまま数えると、実際の本文が上限より短く切られる。"""
+        entry = Entry(
+            url="https://x.test/a",
+            title="題",
+            summary="<p>" + "あ" * (MAX_SUMMARY_CHARS + 100) + "</p>",
+            published_at=None,
+            source_name="s",
+        )
+        prompt = _build_prompt(entry)
+        assert prompt is not None
+        line = next(x for x in prompt.splitlines() if x.startswith("summary: "))
+        assert len(line) - len("summary: ") == MAX_SUMMARY_CHARS
