@@ -18,7 +18,13 @@ on:
         default: false
 
 # **状態ブランチへの push に必要**（ADR-002）。`persist.py` が orphan branch
-# `state` へ書き込む。既定ブランチへは書き込まない（F-002 AC-033）
+# `state` へ書き込む。
+#
+# **この権限はブランチ単位に絞れない** — GitHub の permissions はリポジトリ
+# 単位であり、`contents: write` は既定ブランチへの書き込みも技術的に許す。
+# 「既定ブランチへ書き込まない」（F-002 AC-033）を担保しているのは
+# `persist.py` が `state` 以外へ push しないことと、ブランチ保護であって
+# この宣言ではない。
 permissions:
   contents: write
 
@@ -66,12 +72,13 @@ jobs:
         # 握り潰すと全件失敗しても Actions が成功として扱い、無人実行では
         # 異常に気づけない（F-002 AC-010 / SPEC-005 §5）。
         #
-        # **`set -o pipefail` が必須。** GitHub Actions の既定シェルは
-        # `bash -e` であり pipefail は付かないため、`| tee` を挟むと
-        # `tee` の終了コード（常に0）が採用され、非0が消える
+        # **`shell: bash` の明示が pipefail を有効にする。** 未指定だと
+        # `bash -e`（pipefail なし）で動き、`| tee` を挟むと `tee` の終了
+        # コード（常に0）が採用されて非0が消える。明示すると
+        # `bash --noprofile --norc -eo pipefail` になる（GitHub 公式仕様）。
+        # **この行を消すと全件失敗が成功扱いになる。**
         shell: bash
         run: |
-          set -o pipefail
           uv run feed-triage ${{ inputs.dry_run && '--dry-run' || '' }} \
             | tee "$RUNNER_TEMP/summary.md"
 
