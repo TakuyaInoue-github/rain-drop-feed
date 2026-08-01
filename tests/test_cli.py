@@ -57,6 +57,8 @@ class TestExitCodes:
             exit_codes.INGEST_ALL_FAILED,
             exit_codes.CONFIG_ERROR,
             exit_codes.STATE_PERSIST_FAILED,
+            exit_codes.SPEC_ERROR,
+            exit_codes.FETCH_ALL_FAILED,
         ]
         assert all(c != 0 for c in codes)
 
@@ -66,5 +68,28 @@ class TestExitCodes:
             exit_codes.INGEST_ALL_FAILED,
             exit_codes.CONFIG_ERROR,
             exit_codes.STATE_PERSIST_FAILED,
+            exit_codes.SPEC_ERROR,
+            exit_codes.FETCH_ALL_FAILED,
         ]
         assert len(set(codes)) == len(codes)
+
+    def test_運用者の設定ミスと実装バグが別のコードになること(self) -> None:
+        """SPEC-005 §5: 是正の主体が異なるため値を分ける。"""
+        assert exit_codes.CONFIG_ERROR != exit_codes.SPEC_ERROR
+
+    def test_取得の全件失敗と投入の全件失敗が別のコードになること(self) -> None:
+        """SPEC-005 §5: どちらの段階で供給が途切れたかを終了コードで判別する。
+
+        同じ値に畳むと、運用者は通知を受けても原因が取得側か投入側かを
+        調べ直すことになる（F-002 AC-010）。
+        """
+        assert exit_codes.FETCH_ALL_FAILED != exit_codes.INGEST_ALL_FAILED
+
+    def test_既存の終了コードの値が変わっていないこと(self) -> None:
+        """FETCH_ALL_FAILED の追加で既存の値を動かさない。
+
+        終了コードは運用者が覚える契約であり、値の変更は黙って解釈を狂わせる。
+        """
+        assert (exit_codes.OK, exit_codes.INGEST_ALL_FAILED) == (0, 1)
+        assert (exit_codes.CONFIG_ERROR, exit_codes.STATE_PERSIST_FAILED) == (2, 3)
+        assert exit_codes.SPEC_ERROR == 4
