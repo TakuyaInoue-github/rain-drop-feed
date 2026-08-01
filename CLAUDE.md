@@ -21,6 +21,26 @@ uv run lint-imports        # 層構造の依存方向チェック
 
 CI（`.github/workflows/ci.yml`）は上記を Python 3.10 / 3.12 で実行する。**コード変更後はこの4つ（ruff / mypy / lint-imports / pytest）を通してから完了とすること。**
 
+### コードレビュー（diff-review）
+
+[code-review-toolkits](https://github.com/TakuyaInoue-github/code-review-toolkits) の `diff-review` を使う（TASK-056）。設定は `.diff-review.yml`。
+
+```bash
+diff-review review --base main            # PR 前に手動で回す（LLM レビュー）
+diff-review review --base main --no-claude # 決定論チェックのみ
+```
+
+**pre-push hook は git 管理外**のため、clone 後に各自インストールする。
+
+```bash
+cp scripts/pre-push "$(git rev-parse --git-path hooks)/pre-push"
+chmod +x "$(git rev-parse --git-path hooks)/pre-push"
+```
+
+hook は `--no-claude`（決定論チェックのみ）で動く。**LLM レビューを push のたびに自動実行しない** — コストと待ち時間が積み上がり、hook を迂回する動機になるため。`--ci` はパイプライン専用で、pre-push で使うと `.diff-review.yml` が無視される。
+
+`docs/**` はレビュー対象から除外している。ドキュメントの検証は `docs/05_guides/prompts/independent_review.md` を**別セッション**で回す方が検出力が高い（→ 下記「独立検証」）。
+
 ### 層構造
 
 `src/feed_triage/` は4層。依存方向は `import-linter` が CI で強制する（`pyproject.toml` の `[tool.importlinter]`）。

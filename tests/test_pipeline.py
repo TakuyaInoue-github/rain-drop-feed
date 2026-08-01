@@ -674,3 +674,49 @@ def test_評価件数の上限を超える分は次回へ持ち越される() ->
 
     assert len(evaluator.seen) == 3
     assert outcome.summary.evaluated == 3
+
+
+def test_SKIPPED_が混ざっても評価の全滅を検知する() -> None:
+    """**diff-review の指摘（2026-08-01）。**
+
+    分母を `len(targets)` にすると、SKIPPED（材料がなく評価しなかった件）が
+    混ざるだけで `evaluation_failures < targets` となり全滅を見逃す。
+    **TASK-099 で塞いだはずの穴が、SKIPPED 1件で再発する。**
+
+    分母は「実際に評価を試みた件数」でなければならない。
+    """
+    entries = [entry(f"https://example.test/{i}") for i in range(3)]
+    evaluator = FakeEvaluator(
+        {
+            "https://example.test/0": EvaluationOutcome(OutcomeKind.SKIPPED),
+            "https://example.test/1": EvaluationOutcome(OutcomeKind.API_ERROR),
+            "https://example.test/2": EvaluationOutcome(OutcomeKind.API_ERROR),
+        }
+    )
+
+    outcome = run(
+        options(), adapters(fetch=FakeFetcher(entries=entries), evaluator=evaluator)
+    )
+
+    assert outcome.exit_code == exit_codes.EVALUATE_ALL_FAILED
+
+
+def test_全件が_SKIPPED_なら全滅としない() -> None:
+    """SKIPPED は失敗ではない（F-001 AC-023a）。
+
+    材料がないだけの記事しかない週を失敗扱いにすると、`FETCH_ALL_FAILED` と
+    違って**運用者に是正できることがない**通知が飛ぶ。
+    """
+    entries = [entry(f"https://example.test/{i}") for i in range(2)]
+    evaluator = FakeEvaluator(
+        {
+            f"https://example.test/{i}": EvaluationOutcome(OutcomeKind.SKIPPED)
+            for i in range(2)
+        }
+    )
+
+    outcome = run(
+        options(), adapters(fetch=FakeFetcher(entries=entries), evaluator=evaluator)
+    )
+
+    assert outcome.exit_code == exit_codes.OK

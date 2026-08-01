@@ -1,0 +1,22 @@
+#!/bin/bash
+# diff-review pre-push hook（TASK-056 / ADR-004 後続アクション）
+#
+# インストール:
+#   cp scripts/pre-push "$(git rev-parse --git-path hooks)/pre-push"
+#   chmod +x "$(git rev-parse --git-path hooks)/pre-push"
+#
+# **`--ci` はパイプライン専用**のためここでは使わない。pre-push で使うと
+# リポジトリ設定（.diff-review.yml の exclude 等）が無視される。
+#
+# **LLM レビューは pre-push で自動実行しない**（上流 ADR-006 決定事項1）。
+# push のたびに Claude を呼ぶとコストと待ち時間が積み上がり、hook を
+# 迂回する動機になる。ここでは決定論チェック（preflight・バンドル生成・
+# サイズガード）のみを行い、LLM レビューは PR 前に手動で回す:
+#
+#   diff-review review --base main
+set -u
+
+if command -v diff-review >/dev/null 2>&1; then
+  exec diff-review review --base origin/main --no-claude
+fi
+exec uv run diff-review review --base origin/main --no-claude

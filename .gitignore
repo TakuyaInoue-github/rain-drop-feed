@@ -15,3 +15,12 @@ build/
 *.swp
 *.swo
 *~
+
+# 実行時に CWD へ生成される状態ファイル（ADR-005）。
+# **正典は orphan branch `state` 側**であり、既定ブランチへコミットしてはならない。
+# ローカル実行後の `git add -A` で誤って混入するのを防ぐ
+state.jsonl
+runs.jsonl
+
+# diff-review の実行成果物（バンドル・findings）。実行のたびに再生成される
+.diff-review/
