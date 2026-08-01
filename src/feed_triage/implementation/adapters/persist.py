@@ -69,6 +69,32 @@ def persist_state(repo: Path, files: dict[str, str]) -> None:
         _cleanup(repo, worktree)
 
 
+def load_persisted(repo: Path, names: list[str]) -> dict[str, str]:
+    """状態ブランチから `names` の内容を読み出す（SPEC-002 フロー #2）。
+
+    **`persist_state` と対になる。** 書き込みが状態ブランチなのに読み込みが
+    作業ディレクトリのファイルだと、CI のようにまっさらな checkout から
+    始まる環境では**状態が読めず全件が新規として扱われる**（冪等性 R-002 が
+    成立しない → TASK-112。実地の Actions 実行で発覚した）。
+
+    ブランチが無い初回は空を返す。**例外にしない** — 状態がないことは
+    異常ではなく、正常な初回実行である。
+    """
+    _git(repo, "fetch", "--quiet", "origin", STATE_BRANCH, allow_failure=True)
+    ref = f"origin/{STATE_BRANCH}"
+    if _git(repo, "rev-parse", "--verify", "--quiet", ref, allow_failure=True) is None:
+        return {}
+
+    files: dict[str, str] = {}
+    for name in names:
+        # ファイル単位で失敗を許容する。`runs.jsonl` が後から増えた場合など、
+        # 片方だけ存在する状態がありうる
+        body = _git(repo, "show", f"{ref}:{name}", allow_failure=True)
+        if body is not None:
+            files[name] = body
+    return files
+
+
 def _prepare_worktree(repo: Path, worktree: Path) -> None:
     """状態ブランチを worktree として展開する。無ければ orphan branch を作る。"""
     _git(repo, "fetch", "--quiet", "origin", STATE_BRANCH, allow_failure=True)
