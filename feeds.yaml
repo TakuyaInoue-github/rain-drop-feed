@@ -1,6 +1,8 @@
 # feed-triage: 購読フィード定義 v0
 # weight: LLMスコアへの事前補正 (+1/0/-1)。一次情報の設計解説が多いソースを優遇
-# verified: HTTP 200 + 有効なRSS/Atom であることを確認済み（2026-07-28 実測、13件すべて疎通）
+# verified: HTTP 200 + 有効なRSS/Atom であることを**その情報源について**確認済み。
+#   件数はここに書かない（削除のたびに更新漏れが起きるため）。現在の有効件数は
+#   `sources` の要素数が正典であり、削除した情報源は理由つきのコメントとして残す。
 
 sources:
   # ===== 公式ベンダーブログ =====
@@ -66,11 +68,13 @@ sources:
   # feed の link 要素が存在せず、運用者確認でもフィードの提供なしと判断した。
   # → TASK-027 (wontfix)。復活させる場合は git 履歴から定義を戻せる。
 
-  - name: vutr-substack   # Vu Trinh
-    url: https://vutr.substack.com/feed
-    weight: +1
-    tags: [personal]
-    verified: true
+  # vutr-substack (Vu Trinh, https://vutr.substack.com/feed) は 2026-08-01 に削除した。
+  # **フィード自体は正常に配信されており、ローカルからは 20 件取得できる。**
+  # GitHub Actions のランナーからのみ HTTP 403 になる（Substack のデータセンター
+  # IP ブロック。Cloudflare 配下）。User-Agent は原因ではない — ローカルでは
+  # 現行UA / ブラウザUA / UAなし のいずれも 200 だった。
+  # 週次実行では毎回失敗し、サマリの失敗行に埋もれて本当の障害を隠すため外す。
+  # → TASK-111。実行環境が変われば（セルフホストランナー等）復活させられる。
 
   # ===== コミュニティ評価済み (Hacker News) =====
   - name: hn-databricks
