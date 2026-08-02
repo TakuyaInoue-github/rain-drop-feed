@@ -66,11 +66,13 @@ sources:
   # feed の link 要素が存在せず、運用者確認でもフィードの提供なしと判断した。
   # → TASK-027 (wontfix)。復活させる場合は git 履歴から定義を戻せる。
 
-  - name: vutr-substack   # Vu Trinh
-    url: https://vutr.substack.com/feed
-    weight: +1
-    tags: [personal]
-    verified: true
+  # vutr-substack (Vu Trinh, https://vutr.substack.com/feed) は 2026-08-01 に削除した。
+  # **フィード自体は正常に配信されており、ローカルからは 20 件取得できる。**
+  # GitHub Actions のランナーからのみ HTTP 403 になる（Substack のデータセンター
+  # IP ブロック。Cloudflare 配下）。User-Agent は原因ではない — ローカルでは
+  # 現行UA / ブラウザUA / UAなし のいずれも 200 だった。
+  # 週次実行では毎回失敗し、サマリの失敗行に埋もれて本当の障害を隠すため外す。
+  # → TASK-111。実行環境が変われば（セルフホストランナー等）復活させられる。
 
   # ===== コミュニティ評価済み (Hacker News) =====
   - name: hn-databricks
