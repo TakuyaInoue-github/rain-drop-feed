@@ -32,6 +32,7 @@ from feed_triage.contract.model import (
 )
 from feed_triage.implementation.adapters.evaluate import EvaluationOutcome, OutcomeKind
 from feed_triage.implementation.adapters.ingest import Candidate, IngestResult
+from feed_triage.implementation.domain.cost import estimate_cost_usd
 from feed_triage.implementation.domain.scoring import (
     DEFAULT_HOT_THRESHOLD,
     DEFAULT_THRESHOLD,
@@ -217,12 +218,21 @@ def _evaluate_all(
     records: list[StateRecord] = []
     verdicts: list[EntryVerdict] = []
     attempted = 0
+    spent_input = 0
+    spent_output = 0
 
     for target in targets:
         outcome = adapters.evaluator.evaluate(target)
 
+        # **記録の可否より前に積む**。API を呼んだ時点でトークンは消費されており、
+        # 記録しない件（API 障害など）を除くと実費より小さく出る（REQ-NF-002a）
+        if outcome.usage is not None:
+            spent_input += outcome.usage[0]
+            spent_output += outcome.usage[1]
+
         if outcome.kind is OutcomeKind.SPEC_ERROR:
             # 実装が是正すべき要求不正。続けても同じ結果になるため中止する
+            summary.cost_usd = estimate_cost_usd(spent_input, spent_output)
             return _Evaluated(candidates, records, verdicts, aborted=True, attempted=attempted)
 
         if outcome.kind is not OutcomeKind.SKIPPED:
@@ -278,6 +288,7 @@ def _evaluate_all(
                 )
             )
 
+    summary.cost_usd = estimate_cost_usd(spent_input, spent_output)
     return _Evaluated(candidates, records, verdicts, aborted=False, attempted=attempted)
 
 

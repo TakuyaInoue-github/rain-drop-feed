@@ -517,6 +517,28 @@ def test_評価0件でもコスト行を出力する() -> None:
     assert "評価コスト: $0.000 (0 件)" in out
 
 
+def test_評価したのにコストが0なら算出失敗を警告する() -> None:
+    """SPEC-006 OQ-001 / TASK-041: 静かに壊れた状態を検知する。
+
+    応答から usage を読めない実装になると `evaluated > 0` でも
+    `cost_usd` が 0.0 になり、コスト超過の検知が「$0.000 なのに評価 200 件」
+    の形で無言のまま機能しなくなる（REQ-NF-002a）。
+    """
+    summary = _summary(cost_usd=0.0, evaluated=200)
+    out = format_summary(summary, run_at=RUN_AT)
+    assert "評価コスト: $0.000 (200 件)" in out
+    assert "コストを算出できませんでした" in out
+
+
+def test_評価0件のコスト0は警告しない() -> None:
+    """0.0 は「未算出」ではなく「0 件評価」を意味する（SPEC-006 §4）。
+
+    新着がない週に毎回警告が出ると、警告そのものが無視されるようになる。
+    """
+    out = format_summary(_summary(cost_usd=0.0, evaluated=0), run_at=RUN_AT)
+    assert "コストを算出できませんでした" not in out
+
+
 def test_評価失敗の理由がサマリに出る() -> None:
     """TASK-100: 無人実行では終了コードとサマリだけが原因究明の手がかり。
 

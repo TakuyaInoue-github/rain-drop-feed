@@ -143,6 +143,11 @@ def _metrics_block(summary: RunSummary) -> str:
             lines.append(f"  失敗理由: {_reasons(summary.ingest_failure_reasons)}")
 
     lines.append(f"評価コスト: ${summary.cost_usd:.3f} ({summary.evaluated} 件)")
+    if summary.evaluated and not summary.cost_usd:
+        # **評価したのに 0.0 は算出の failure**（SPEC-006 OQ-001）。
+        # 0.0 は本来「0 件評価」を意味する。応答から usage を読めない実装に
+        # なると、コスト超過の検知が無言のまま機能しなくなる（REQ-NF-002a）
+        lines.append("  コストを算出できませんでした（応答からトークン数を取得できていません）")
     if not summary.dry_run:
         lines.append(_elapsed(summary.weeks_since_previous_run))
     return "\n".join(lines)
