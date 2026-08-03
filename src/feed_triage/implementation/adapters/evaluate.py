@@ -13,7 +13,7 @@ from __future__ import annotations
 import html
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Protocol, TypeGuard
 
@@ -26,6 +26,10 @@ MODEL_ID = "claude-haiku-4-5-20251001"
 
 **必須パラメータとして明示指定する** — 既定へのフォールバックが起こると、
 どのモデルで得たスコアかが追跡できなくなる（ADR-001）。
+
+**変更時は `domain/cost.py` の単価定数も合わせる。** 層の依存方向
+（`domain → adapters` のみ）により単価をここへ集約できないため、
+モデルと単価は別ファイルに分かれている。
 """
 
 MAX_TOKENS = 512
@@ -188,18 +192,22 @@ class Evaluator:
 
         attempts = 0
         last: EvaluationOutcome | None = None
+        # **試行をまたいで積む**。最後の試行分だけを返すと、リトライした件の
+        # コストが過少計上される（REQ-NF-002a）
+        spent: tuple[int, int] | None = None
         for _ in range(RETRY_ATTEMPTS + 1):
             outcome = self._call(prompt)
+            spent = _accumulate(spent, outcome.usage)
             if outcome.kind not in _SEMANTIC:
                 # 成功、または再試行で解決しない失敗（API 障害・実装バグ）
-                return outcome
+                return replace(outcome, usage=spent)
             attempts += 1
             last = outcome
 
         assert last is not None
         # 意味的不正は試行回数分を failure_count に加算する（F-001 AC-015）
         return EvaluationOutcome(
-            last.kind, attempts=attempts, error_detail=last.error_detail, usage=last.usage
+            last.kind, attempts=attempts, error_detail=last.error_detail, usage=spent
         )
 
     def _call(self, prompt: str) -> EvaluationOutcome:
@@ -340,6 +348,21 @@ def _payload_of(response: Any) -> dict[str, Any] | None:
             return None
         return parsed if isinstance(parsed, dict) else None
     return None
+
+
+def _accumulate(
+    spent: tuple[int, int] | None, addition: tuple[int, int] | None
+) -> tuple[int, int] | None:
+    """試行ごとの usage を積む。
+
+    **どちらか一方が None でも、取れている側は残す。** 応答から usage が
+    得られない試行があっても、他の試行分まで捨てると過少計上になる。
+    """
+    if addition is None:
+        return spent
+    if spent is None:
+        return addition
+    return (spent[0] + addition[0], spent[1] + addition[1])
 
 
 def _usage_of(response: Any) -> tuple[int, int] | None:
