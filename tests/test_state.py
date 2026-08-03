@@ -201,13 +201,13 @@ class TestEvaluationTargetPriority:
 # --- 暫定値の定数（2026-07-28 に確定。実測後に見直す） --------------------
 
 
-def test_評価件数の上限は200件() -> None:
-    """TASK-028。実測の週31〜49件・上振れ100件に対し2倍の余裕を持つ。
+def test_評価件数の上限は500件() -> None:
+    """TASK-028。情報源 58 件の規模に対し、平常時に持ち越しが出ない値。
 
     上限に達すること自体が異常の兆候として機能する値であり、
     小さすぎると平常時に持ち越しが発生して兆候として使えなくなる。
     """
-    assert DEFAULT_EVALUATION_LIMIT == 200
+    assert DEFAULT_EVALUATION_LIMIT == 500
 
 
 def test_失敗回数の上限は3回() -> None:
