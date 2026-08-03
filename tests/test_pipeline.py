@@ -631,6 +631,132 @@ def test_通常実行では明細を作らない() -> None:
     assert outcome.summary.entries == []
 
 
+# --- 評価コスト（REQ-NF-002a / F-004 AC-004） --------------------------------
+
+
+def test_評価1件の_usage_がコストに反映される() -> None:
+    """SPEC-006 OQ-001 / TASK-041: API 応答のトークン数から算出する。"""
+    evaluator = FakeEvaluator(
+        {
+            "https://example.test/a": EvaluationOutcome(
+                OutcomeKind.OK,
+                verdict=Verdict(score=8, reason="良い", suggested_tags=()),
+                usage=(1_000_000, 1_000_000),
+            )
+        }
+    )
+
+    outcome = run(options(), adapters(evaluator=evaluator))
+
+    # 入力 $1.00 + 出力 $5.00
+    assert outcome.summary.cost_usd == pytest.approx(6.0)
+
+
+def test_複数件の_usage_が合算される() -> None:
+    """全件の総和になること。1件だけでは総和のロジックが駆動されない。"""
+    urls = ["https://example.test/a", "https://example.test/b", "https://example.test/c"]
+    evaluator = FakeEvaluator(
+        {
+            url: EvaluationOutcome(
+                OutcomeKind.OK,
+                verdict=Verdict(score=8, reason="良い", suggested_tags=()),
+                usage=(1_000_000, 0),
+            )
+            for url in urls
+        }
+    )
+    fetcher = FakeFetcher(entries=[entry(url=url) for url in urls])
+
+    outcome = run(options(), adapters(fetch=fetcher, evaluator=evaluator))
+
+    assert outcome.summary.evaluated == 3
+    assert outcome.summary.cost_usd == pytest.approx(3.0)
+
+
+def test_記録しない件でも消費したトークンを計上する() -> None:
+    """API を呼んだ時点でトークンは消費されている（REQ-NF-002a）。
+
+    `API_ERROR` は記録対象外だが（F-001 AC-015a）、応答が返っている以上
+    実費は発生している。記録の可否で除くと、リトライ暴走のように失敗が
+    積み上がる異常ほどコストが実費より小さく出て検知できなくなる。
+    """
+    evaluator = FakeEvaluator(
+        {
+            "https://example.test/a": EvaluationOutcome(
+                OutcomeKind.API_ERROR, error_detail="503", usage=(1_000_000, 0)
+            )
+        }
+    )
+
+    outcome = run(options(), adapters(evaluator=evaluator))
+
+    assert outcome.summary.evaluated == 0, "記録対象外なので評価件数には入らない"
+    assert outcome.summary.cost_usd == pytest.approx(1.0), "だがコストは計上する"
+
+
+def test_中止した実行でも直前までのコストが残る() -> None:
+    """`spec_error` で打ち切っても、そこまでに払った分は消えない。
+
+    中止時にコストが 0 に見えると、実装バグで毎回中止する状態が
+    「コストゼロで正常」と誤読される（REQ-NF-002a の検知が効かない）。
+    """
+    urls = ["https://example.test/a", "https://example.test/b"]
+    evaluator = FakeEvaluator(
+        {
+            urls[0]: EvaluationOutcome(
+                OutcomeKind.OK,
+                verdict=Verdict(score=8, reason="良い", suggested_tags=()),
+                usage=(1_000_000, 0),
+            ),
+            urls[1]: EvaluationOutcome(
+                OutcomeKind.SPEC_ERROR, error_detail="400", usage=(1_000_000, 0)
+            ),
+        }
+    )
+    fetcher = FakeFetcher(entries=[entry(url=url) for url in urls])
+
+    outcome = run(options(), adapters(fetch=fetcher, evaluator=evaluator))
+
+    assert outcome.summary.completed is False, "中止している"
+    assert outcome.summary.cost_usd == pytest.approx(2.0), "中止の原因となった件も含めて計上する"
+
+
+def test_usage_が取れない件があっても他の件の合算は壊れない() -> None:
+    """応答から usage を読めない件は飛ばし、取れている分は残す。
+
+    片方が欠けたときに全体を捨てると、1件の異常応答で実行全体の
+    コストが 0 になり異常検知が効かなくなる。
+
+    **usage が取れる件を先に置く** — 取れない件を先にすると、累計を
+    リセットする実装でも後続で積み直されて検出できない。
+    """
+    urls = ["https://example.test/a", "https://example.test/b", "https://example.test/c"]
+    verdict = Verdict(score=8, reason="良い", suggested_tags=())
+    evaluator = FakeEvaluator(
+        {
+            urls[0]: EvaluationOutcome(OutcomeKind.OK, verdict=verdict, usage=(1_000_000, 0)),
+            urls[1]: EvaluationOutcome(OutcomeKind.OK, verdict=verdict, usage=None),
+            urls[2]: EvaluationOutcome(OutcomeKind.OK, verdict=verdict, usage=(1_000_000, 0)),
+        }
+    )
+    fetcher = FakeFetcher(entries=[entry(url=url) for url in urls])
+
+    outcome = run(options(), adapters(fetch=fetcher, evaluator=evaluator))
+
+    assert outcome.summary.evaluated == 3
+    assert outcome.summary.cost_usd == pytest.approx(2.0), "取れている2件分だけを計上する"
+
+
+def test_評価0件ならコストは0のまま() -> None:
+    """0.0 は「未算出」ではなく「0 件評価」を意味する（SPEC-006 §4）。"""
+    fetcher = FakeFetcher(entries=[], outcomes=[SourceOutcome("example", 0)])
+
+    outcome = run(options(), adapters(fetch=fetcher))
+
+    assert outcome.summary.evaluated == 0
+    assert outcome.summary.cost_usd == 0.0
+
+
 # --- 実行記録（SPEC-002 §4） -------------------------------------------------
 
 
