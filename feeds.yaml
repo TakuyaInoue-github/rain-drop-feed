@@ -76,6 +76,306 @@ sources:
   # 週次実行では毎回失敗し、サマリの失敗行に埋もれて本当の障害を隠すため外す。
   # → TASK-111。実行環境が変われば（セルフホストランナー等）復活させられる。
 
+  # ===== 設計・運用 (英語・個人) =====
+  # 一次情報の設計解説が中心のため +1。分散システム・形式手法・運用の
+  # 実践知が多く、トリアージ基準の「設計判断の背景」に合致する
+  - name: martinfowler
+    url: https://martinfowler.com/feed.atom
+    weight: +1
+    tags: [personal, design]
+    verified: true
+
+  - name: danluu
+    url: https://danluu.com/atom.xml
+    weight: +1
+    tags: [personal, design]
+    verified: true
+
+  - name: hillelwayne
+    url: https://www.hillelwayne.com/index.xml
+    weight: +1
+    tags: [personal, formal-methods]
+    verified: true
+
+  - name: simonwillison
+    url: https://simonwillison.net/atom/everything/
+    weight: 0   # 更新頻度が高く TIL 等の短文も多いため据え置き
+    tags: [personal, llm]
+    verified: true
+
+  - name: brooker
+    url: https://brooker.co.za/blog/rss.xml
+    weight: +1
+    tags: [personal, distributed]
+    verified: true
+
+  - name: aphyr           # Kyle Kingsbury。Jepsen の解析記事もここで配信される
+    url: https://aphyr.com/posts.atom
+    weight: +1
+    tags: [personal, distributed]
+    verified: true
+
+  - name: scattered-thoughts
+    url: https://www.scattered-thoughts.net/atom.xml
+    weight: +1
+    tags: [personal, plt]
+    verified: true
+
+  - name: lethain
+    url: https://lethain.com/feeds.xml
+    weight: 0   # エンジニアリング組織論が主でデータ領域との重なりは薄い
+    tags: [personal, engineering-management]
+    verified: true
+
+  - name: tidyfirst       # Kent Beck
+    url: https://newsletter.kentbeck.com/feed
+    weight: +1
+    tags: [personal, design]
+    verified: true
+
+  - name: acolyer         # 論文紹介。2021年以降は更新停止（アーカイブとして購読）
+    url: https://blog.acolyer.org/feed/
+    weight: 0
+    tags: [personal, papers]
+    verified: true
+
+  # ===== FP・処理系 (英語) =====
+  - name: okmij
+    url: https://okmij.org/ftp/rss.xml
+    weight: +1
+    tags: [personal, fp]
+    verified: true
+
+  - name: lexi-lambda
+    url: https://lexi-lambda.github.io/feeds/all.atom.xml
+    weight: +1
+    tags: [personal, fp]
+    verified: true
+
+  - name: bartoszmilewski
+    url: https://bartoszmilewski.com/feed/
+    weight: +1
+    tags: [personal, fp]
+    verified: true
+
+  - name: math-andrej
+    url: https://math.andrej.com/feed.xml
+    weight: +1
+    tags: [personal, plt]
+    verified: true
+
+  - name: conal
+    url: http://conal.net/blog/feed
+    weight: +1
+    tags: [personal, fp]
+    verified: true
+
+  - name: stevelosh
+    url: https://stevelosh.com/rss.xml
+    weight: +1
+    tags: [personal, fp]
+    verified: true
+
+  - name: paulgraham      # 公式RSSがないため Aaron Swartz 作の非公式フィードを使う
+    url: http://www.aaronsw.com/2002/feeds/pgessays.rss
+    weight: 0   # エッセイ中心で技術記事の比率が低い
+    tags: [personal, essay]
+    verified: true
+
+  - name: wadler
+    url: https://wadler.blogspot.com/feeds/posts/default
+    weight: +1
+    tags: [personal, plt]
+    verified: true
+
+  - name: eli-bendersky
+    url: https://eli.thegreenplace.net/feeds/all.atom.xml
+    weight: +1
+    tags: [personal, plt]
+    verified: true
+
+  - name: stuffwithstuff  # Bob Nystrom (Crafting Interpreters)
+    url: https://journal.stuffwithstuff.com/rss.xml
+    weight: +1
+    tags: [personal, plt]
+    verified: true
+
+  # ===== 企業テックブログ (英語・非ベンダー) =====
+  - name: cloudflare
+    url: https://blog.cloudflare.com/rss/
+    weight: +1
+    tags: [eng-blog, infra]
+    verified: true
+
+  - name: stripe-eng
+    url: https://stripe.dev/blog/feed
+    weight: 0
+    tags: [eng-blog]
+    verified: true
+
+  - name: janestreet
+    url: https://blog.janestreet.com/feed.xml
+    weight: +1
+    tags: [eng-blog, fp]
+    verified: true
+
+  - name: well-typed
+    url: https://www.well-typed.com/blog/atom.xml
+    weight: +1
+    tags: [eng-blog, fp]
+    verified: true
+
+  - name: tweag
+    url: https://www.tweag.io/rss.xml
+    weight: +1
+    tags: [eng-blog, fp]
+    verified: true
+
+  # ===== 個人ブログ (日本語) =====
+  - name: t-wada
+    url: https://t-wada.hatenablog.jp/feed
+    weight: +1
+    tags: [personal, ja, testing]
+    verified: true
+
+  - name: masuda220
+    url: https://masuda220.hatenablog.com/feed
+    weight: +1
+    tags: [personal, ja, design]
+    verified: true
+
+  - name: nowokay
+    url: https://nowokay.hatenablog.com/feed
+    weight: 0
+    tags: [personal, ja]
+    verified: true
+
+  - name: mizchi
+    url: https://zenn.dev/mizchi/feed
+    weight: 0
+    tags: [personal, ja]
+    verified: true
+
+  - name: naoya-ito
+    url: https://zenn.dev/naoya_ito/feed
+    weight: +1
+    tags: [personal, ja]
+    verified: true
+
+  - name: kazuhooku
+    url: https://kazuhooku.hatenadiary.org/feed
+    weight: +1
+    tags: [personal, ja, infra]
+    verified: true
+
+  - name: sfujiwara
+    url: https://sfujiwara.hatenablog.com/feed
+    weight: +1
+    tags: [personal, ja, infra]
+    verified: true
+
+  - name: songmu
+    url: https://songmu.jp/riji/index.xml
+    weight: 0
+    tags: [personal, ja]
+    verified: true
+
+  - name: koic
+    url: https://koic.hatenablog.com/feed
+    weight: 0
+    tags: [personal, ja]
+    verified: true
+
+  # ===== FP・処理系 (日本語) =====
+  - name: kazu-yamamoto
+    url: https://kazu-yamamoto.hatenablog.jp/feed
+    weight: +1
+    tags: [personal, ja, fp]
+    verified: true
+
+  - name: mametter
+    url: https://mametter.hatenablog.com/feed
+    weight: +1
+    tags: [personal, ja, plt]
+    verified: true
+
+  - name: kmizu
+    url: https://kmizu.hatenablog.com/feed
+    weight: +1
+    tags: [personal, ja, plt]
+    verified: true
+
+  - name: m-hiyama
+    url: https://m-hiyama.hatenablog.com/feed
+    weight: 0   # 数学寄りの記事が多く、対象領域との重なりは限定的
+    tags: [personal, ja, math]
+    verified: true
+
+  - name: alg-d
+    url: https://alg-d.com/index.xml
+    weight: 0   # 圏論の解説が中心。同上
+    tags: [personal, ja, math]
+    verified: true
+
+  - name: tanakh
+    url: https://tanakh.hatenablog.com/feed
+    weight: 0
+    tags: [personal, ja, fp]
+    verified: true
+
+  - name: ko1-diary       # 笹田耕一（Ruby VM）
+    url: https://www.atdot.net/~ko1/diary/./diary.rss
+    weight: 0   # 日記形式で短文が多い
+    tags: [personal, ja, plt]
+    verified: true
+
+  # ===== 企業テックブログ (日本語) =====
+  - name: ikyu-tech
+    url: https://user-first.ikyu.co.jp/feed
+    weight: 0
+    tags: [eng-blog, ja]
+    verified: true
+
+  - name: layerx-tech
+    url: https://tech.layerx.co.jp/feed
+    weight: 0
+    tags: [eng-blog, ja]
+    verified: true
+
+  - name: cybozu-tech
+    url: https://blog.cybozu.io/feed
+    weight: 0
+    tags: [eng-blog, ja]
+    verified: true
+
+  - name: preferred-tech
+    url: https://tech.preferred.jp/ja/blog/feed/
+    weight: +1
+    tags: [eng-blog, ja, ml]
+    verified: true
+
+  - name: zozo-tech
+    url: https://techblog.zozo.com/feed
+    weight: 0
+    tags: [eng-blog, ja]
+    verified: true
+
+  # figma-eng (https://www.figma.com/blog/engineering/) は追加を見送った。
+  # RSS/Atom の提供がない（/feed, /rss, /feed.xml, /atom.xml すべて 404、
+  # HTML にも feed の link 要素なし）。
+
+  # uber-eng (https://www.uber.com/blog/engineering/) は追加を見送った。
+  # 全候補が HTTP 406 を返す。ブラウザ相当の User-Agent でも同じで、
+  # bot からのアクセスを拒否している。vutr-substack (TASK-111) と同型で、
+  # Actions からの取得はまず成功しない。
+
+  # aws-builders-library (https://aws.amazon.com/builders-library/) は
+  # 追加を見送った。専用フィードがなく、記事は aws-architecture の feed に
+  # 含まれる（＝既存の情報源と重複する）。
+
+  # jepsen (https://jepsen.io/analyses) は独立したフィードを持たない。
+  # 解析記事は著者 Kyle Kingsbury のブログで配信されるため aphyr で購読する。
+
   # ===== コミュニティ評価済み (Hacker News) =====
   - name: hn-databricks
     url: https://hnrss.org/newest?q=databricks&points=50
