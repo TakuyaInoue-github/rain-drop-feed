@@ -179,3 +179,7 @@ chmod +x "$(git rev-parse --git-path hooks)/pre-push"
 - フィードの自動発見 / OPML インポート
 - 重み・閾値の自動チューニング
 - Slack 等への通知
+
+## ライセンス
+
+[MIT](LICENSE)

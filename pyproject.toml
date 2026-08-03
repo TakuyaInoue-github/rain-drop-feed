@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "feed-triage"
 version = "0.1.0"
 description = "技術ブログの RSS を週次で取得し、LLM トリアージを通して Raindrop.io へ自動投入する CLI"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.27",
