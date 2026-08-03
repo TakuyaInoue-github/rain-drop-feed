@@ -251,6 +251,31 @@ def test_意味的不正は1回だけ再試行する() -> None:
     assert outcome.attempts == 2, "試行回数分を failure_count に加算する（F-001 AC-015）"
 
 
+def test_再試行した場合は全試行分の_usage_を合算する() -> None:
+    """REQ-NF-002a: 実際に消費したトークンを計上する。
+
+    最後の試行分だけを返すと、リトライした件のコストが過少計上され、
+    リトライ暴走という検知したい異常ほど実費との乖離が大きくなる。
+    """
+    ev = evaluator(reply(score=99, usage=(500, 120)), reply(score=99, usage=(510, 130)))
+    outcome = ev.evaluate(entry())
+
+    assert outcome.usage == (1010, 250)
+
+
+def test_再試行して成功した場合も全試行分の_usage_を合算する() -> None:
+    """成功して早期 return する経路でも失敗分のトークンを繰り越す。
+
+    失敗した試行の分を落とすと、再試行が起きているほど実費との乖離が
+    大きくなり、リトライ暴走という検知したい異常ほど見えなくなる。
+    """
+    ev = evaluator(reply(score=99, usage=(500, 120)), reply(score=8, usage=(510, 130)))
+    outcome = ev.evaluate(entry())
+
+    assert outcome.kind is OutcomeKind.OK, "2回目で成功している"
+    assert outcome.usage == (1010, 250)
+
+
 def test_再試行で成功したら成功として返す() -> None:
     """一時的な揺らぎは再試行で拾える。"""
     ev = evaluator(reply(score=99), reply(score=8))
