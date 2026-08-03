@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## リポジトリの現状
 
-骨格とツールチェーンは導入済み（→ [ADR-004](docs/04_decisions/ADR-004_implementation_stack.md)）。**取得・評価・投入の本体は未実装**で、`pipeline.run()` は `NotImplementedError` を送出する。SPEC 層（`docs/03_specs/`）は未着手であり、本体の実装はその確定後に行う。
+**本番稼働中**（2026-08-03 時点）。取得・評価・投入・記録・サマリの全段階が実装済みで、GitHub Actions の週次実行（日曜 21:17 UTC）が Raindrop への投入まで完了している。状態は orphan branch `state` に蓄積される。
+
+SPEC 層（`docs/03_specs/`）は全6本を執筆済みで、実装はそれに追随している。実装スタックは [ADR-004](docs/04_decisions/ADR-004_implementation_stack.md)。
+
+**現在の主な関心事は実測に基づく調整**であり、新規実装ではない。閾値（5）と件数上限（500）は情報源を 58 件へ拡大した直後で、初回実行の結果を見て再検討する段階にある（TASK-028 / TASK-035）。
 
 ### コマンド
 
@@ -48,7 +52,7 @@ hook は `--no-claude`（決定論チェックのみ）で動く。**LLM レビ�
 ```
 cli.py                     argparse → RunOptions 構築、出力のみ
 pipeline.py                run(options) -> RunSummary（I/O なし）
-implementation/domain/     副作用のないロジック（state.py / scoring.py）
+implementation/domain/     副作用のないロジック（state.py / scoring.py / summary.py / cost.py）
 implementation/adapters/   副作用の隔離（フィード取得・LLM 評価・投入・状態の永続化）
 contract/                  型定義（model.py / exit_codes.py）
 ```
@@ -70,11 +74,13 @@ contract/                  型定義（model.py / exit_codes.py）
 - **冪等性が第一の受け入れ基準**。一意制約は DB ではなく**アプリ側で担保する**（ADR-005 のトレードオフ）。突合時に url をキーとする辞書を構築し、追記前に照合する。
 - **状態は追記専用**。同一 url の行が複数存在しうるため、現在の状態は **url ごとに `evaluated_at` が最大の行**として再構成する（ADR-005 OQ-001）。行順に依存してはならない（push 競合時の rebase で順序が保証されないため）。
 - **閾値以下のエントリも score 付きで記録する**。後から閾値を検証するための実測データであり、省略すると R-006 が満たせなくなる。
+- **評価コストの算出は節約ではなく異常検知が目的**（REQ-NF-002a）。実コストは年 $3.5〜7 で上限（年 $150）を大きく下回るが、モデル誤指定・リトライ暴走・状態消失による全件再評価に気づく契機が週次無人実行ではサマリしかない。**記録しない件（API 障害など）のトークンも計上する** — API を呼んだ時点で消費済みであり、除くと検知したい異常ほど実費との乖離が大きくなる。`evaluated > 0` かつコストが 0 なら算出失敗として警告する。
 - **LLM の応答は untrusted input として扱う**。構造化出力を用いるためスキーマ違反は起きないが、**値の意味的不正（範囲外スコア）は残る**。範囲外のスコアを投入判定に用いてはならない（F-001 AC-029）。パース失敗・API 障害は1回リトライし、再失敗はスキップして失敗回数とともに記録する。例外でプロセスを落としてはならない（REQ-F-010）。
 - **評価失敗は失敗回数が上限に達するまで次回実行で再評価する**（F-001 AC-018 / AC-019）。1回の失敗で恒久的に取りこぼしてはならない。
 - **dry-run フラグ**で投入をスキップしスコアのみ出力できること。dry-run では状態を更新しない（F-005 AC-004）。
 - **フィード取得は `httpx` で行い、バイト列を `feedparser` に渡す。** `feedparser.parse(url)` の URL モードは使わない（未修正の SSRF・メモリ枯渇 issue があるため → ADR-004 補遺B）。
-- `docs/.ref/feeds.yaml` の各ソースは全て `verified: false`。実装時に HTTP 200 + 有効な RSS/Atom を全件疎通確認して yaml を更新する（AC-4）。`snowflake-blog` の URL には要確認 TODO が付いている。
+- **情報源はリポジトリ直下の `feeds.yaml` が正典**（`docs/.ref/feeds.yaml` は起点となった参照資料）。現在 **58 件**で全て `verified: true`。**追加時は HTTP 200 + 有効な RSS/Atom を実際に取得して確認する**（AC-4）。到達できなかったソースは削除ではなく**理由つきのコメントとして残す**（復活可能にするため）。
+- **ローカルで取得できても Actions のランナーからは弾かれることがある。** Substack や一部 CDN はデータセンター IP を拒否する（vutr-substack の 403 → TASK-111、uber-eng の 406）。User-Agent の問題ではないため、追加後の初回実行で結果を確認する。
 - 秘匿値は `RAINDROP_TOKEN`（Bearer）と投入先コレクション ID。GitHub Actions では secrets 経由で渡す。
 
 **要合意（勝手に変えない）:** `profile.md` のトリアージ基準、閾値 `5`、投入先コレクション構造。**委任可能:** `triage.py` の実装、workflow 定義、state スキーマ詳細、リトライ戦略。
