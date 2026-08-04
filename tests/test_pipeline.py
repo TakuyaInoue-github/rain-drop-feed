@@ -175,6 +175,9 @@ def test_処理済みのエントリは評価されない() -> None:
         source_name="example",
         evaluated_at=NOW - timedelta(days=7),
         score=8,
+        # 読み戻し時に `score` から補完される値（ADR-006）。ここは store を
+        # 経由しないため明示する
+        evaluated=True,
     )
     evaluator = FakeEvaluator()
 
@@ -303,6 +306,36 @@ def test_閾値以下のエントリも状態に記録される() -> None:
     assert len(store.appended) == 1
     assert store.appended[0].score == 2
     assert store.appended[0].ingested is False
+
+
+def test_評価に成功した記事は評価済みとして記録される() -> None:
+    """R-002 の要: `evaluated` を立てないと次回また評価される。
+
+    状態導出は `evaluated` を唯一の判定軸にしている（ADR-006）。書き込み側で
+    立て忘れると、**今週評価した記事が来週も新規として扱われ**、投入済みの
+    記事が重複投入されうる。
+    """
+    evaluator = FakeEvaluator(
+        {"https://example.test/a": EvaluationOutcome(OutcomeKind.OK, verdict=Verdict(8, ""))}
+    )
+    store = FakeStore()
+
+    run(options(), adapters(evaluator=evaluator, store=store))
+
+    assert store.appended[0].evaluated is True
+
+
+def test_評価に失敗した記事は評価済みとして記録されない() -> None:
+    """失敗は `evaluated=False` のまま。失敗回数の上限まで再評価される。"""
+    evaluator = FakeEvaluator(
+        {"https://example.test/a": EvaluationOutcome(OutcomeKind.INVALID_VALUE, attempts=2)}
+    )
+    store = FakeStore()
+
+    run(options(), adapters(evaluator=evaluator, store=store))
+
+    assert store.appended[0].evaluated is False
+    assert store.appended[0].failure_count == 2
 
 
 # --- 評価失敗の扱い（SPEC-003 との接続） ------------------------------------

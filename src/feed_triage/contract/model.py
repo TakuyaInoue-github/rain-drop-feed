@@ -12,7 +12,36 @@ SCORE_MAX = 10
 `domain`（判定）と `adapters`（永続化時の丸め）の**双方が参照する**ため
 contract 層に置く。adapters → domain の import は禁じられており（ADR-004）、
 domain 側に置くと adapters で値を重複定義することになる。
+
+**多軸化（ADR-006）以降は旧基準の列。** 2026-08 以前に評価した行にのみ存在する。
 """
+
+JUDGMENT_MIN = 0
+JUDGMENT_MAX = 5
+"""判断の主軸の値域（ADR-006）。→ `SCORE_MIN` と同じ理由で contract 層に置く。"""
+
+MECHANISM_MIN = 0
+MECHANISM_MAX = 2
+"""機構性（仕組みへの踏み込み）の値域（ADR-006）。"""
+
+SCOPE_VALUES = ("core", "broad", "periphery", "outside")
+"""射程の取りうる値（ADR-006）。
+
+**`outside` 以外は収集の候補に残る** — 射程は除外ではなく配架のために判定する。
+"""
+
+JUDGMENT_MARKERS = (
+    "立場の表明",
+    "通説への反論",
+    "他案の棄却",
+    "失敗の記述",
+    "再定義",
+    "固有の語彙",
+    "一人称の判断",
+    "迷いの残存",
+    "異分野からの持ち込み",
+)
+"""judgment の根拠として観測されうるマーカー（ADR-006）。"""
 
 
 @dataclass(frozen=True)
@@ -64,6 +93,39 @@ class StateRecord:
     reason: str = ""
     suggested_tags: tuple[str, ...] = ()
     failure_count: int = 0
+
+    # --- 多軸判定（ADR-006）。すべて任意項目 -------------------------------
+    # **必須項目は url / evaluated_at の2つのまま増やさない。** 増やすと過去の
+    # 行が読み込み時にスキップされ、全件が新規扱いとなって重複投入する
+    # （R-002 違反）。
+    judgment: int | None = None
+    """著者の判断が本文に残っているか（0-5）。収集可否を決める主軸。"""
+
+    mechanism: int | None = None
+    """仕組みの層への踏み込み（0-2）。judgment とは独立した加点材料。"""
+
+    scope: str | None = None
+    """技術領域（`core` / `broad` / `periphery` / `outside`）。
+
+    **除外ではなく配架のために判定する。** `outside` 以外は収集の候補に残る。
+    """
+
+    unscorable: bool = False
+    """判断材料がなく採点できなかった。**低評価とは別の状態**。"""
+
+    judgment_markers: tuple[str, ...] = ()
+    """judgment の根拠として観測されたマーカー。"""
+
+    priority: int | None = None
+    """`judgment * 2 + mechanism`。並べ替えに用いる。"""
+
+    evaluated: bool = False
+    """評価が成立したか。**状態導出の唯一の判定軸**（ADR-006）。
+
+    `score is not None` を「評価成功」の代理に使うと、`unscorable`（評価は
+    成立したが採点しなかった）を評価失敗と区別できず毎週再評価される。
+    値域から独立したフラグにすることで、以後軸を増やしても状態導出が壊れない。
+    """
 
 
 @dataclass(frozen=True)

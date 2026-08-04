@@ -22,7 +22,13 @@ def record(
     at: datetime = BASE,
     score: int | None = 8,
     failure_count: int = 0,
+    evaluated: bool | None = None,
+    unscorable: bool = False,
 ) -> StateRecord:
+    """`evaluated` を省略すると `score` の有無から補完する。
+
+    多軸化以前の行（`evaluated` を持たない）を読み戻したときと同じ状態になる。
+    """
     return StateRecord(
         url=url,
         title=f"title of {url}",
@@ -30,6 +36,8 @@ def record(
         evaluated_at=at,
         score=score,
         failure_count=failure_count,
+        evaluated=(score is not None) if evaluated is None else evaluated,
+        unscorable=unscorable,
     )
 
 
@@ -73,6 +81,29 @@ class TestIsProcessed:
     def test_失敗回数が上限を超えていても処理済み(self) -> None:
         r = record("u", score=None, failure_count=4)
         assert is_processed(r, max_failures=3) is True
+
+    def test_多軸化以前の行は評価済みとして扱う(self) -> None:
+        """ADR-006: 旧行は `evaluated` を持たないが再評価してはならない。
+
+        読み戻し時に `score` から補完されるため、ここでは補完済みの
+        レコードが処理済みと判定されることを固定する。
+        """
+        r = record("u", score=7, evaluated=True)
+        assert is_processed(r, max_failures=3) is True
+
+    def test_採点不能は評価済みとして扱い再評価しない(self) -> None:
+        """ADR-006 の中核: `unscorable` は「評価失敗」ではない。
+
+        判断材料がなく採点できなかった記事は、評価そのものは成立している。
+        失敗として扱うと失敗回数の上限に達するまで**毎週再評価され続け**、
+        材料が増えないまま API コストだけがかかる。
+        """
+        r = record("u", score=None, evaluated=True, unscorable=True, failure_count=0)
+        assert is_processed(r, max_failures=3) is True
+
+    def test_評価が成立していなければ失敗回数で判断する(self) -> None:
+        """`evaluated` が偽のときだけ失敗回数を見る（値域から独立させた帰結）。"""
+        assert is_processed(record("u", score=None, evaluated=False), max_failures=3) is False
 
 
 class TestSelectEvaluationTargets:

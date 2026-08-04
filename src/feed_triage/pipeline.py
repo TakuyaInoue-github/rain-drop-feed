@@ -16,7 +16,7 @@ import を許されている本モジュールだけである（ADR-004 設計�
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Protocol
 
@@ -346,6 +346,9 @@ def _build_record(
         reason=outcome.verdict.reason,
         suggested_tags=outcome.verdict.suggested_tags,
         failure_count=carried,
+        # **状態導出の唯一の判定軸**（ADR-006）。立て忘れると今週評価した
+        # 記事が来週も新規として扱われ、投入済みの記事が重複投入されうる
+        evaluated=True,
     )
 
 
@@ -388,19 +391,12 @@ def _apply_ingest_results(records: list[StateRecord], ingest: IngestResult) -> N
 
 
 def _with_ingested(record: StateRecord) -> StateRecord:
-    return StateRecord(
-        url=record.url,
-        title=record.title,
-        source_name=record.source_name,
-        evaluated_at=record.evaluated_at,
-        score=record.score,
-        weight=record.weight,
-        final_score=record.final_score,
-        ingested=True,
-        reason=record.reason,
-        suggested_tags=record.suggested_tags,
-        failure_count=record.failure_count,
-    )
+    """`ingested` だけを立てた複製を返す。
+
+    **全フィールドを書き写さない** — 列を足すたびに写し忘れが起き、しかも
+    既定値で静かに埋まるため気づけない（`evaluated` で実際に踏んだ）。
+    """
+    return replace(record, ingested=True)
 
 
 def _persist(

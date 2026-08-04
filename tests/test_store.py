@@ -14,6 +14,7 @@ import pytest
 
 from feed_triage.contract.model import RunRecord, StateRecord
 from feed_triage.implementation.adapters.store import (
+    STATE_FIELDS,
     StateWriteError,
     append_records,
     append_run,
@@ -61,6 +62,60 @@ def test_追記した内容がそのまま読み戻せる(tmp_path: Path) -> Non
     assert ignored == 0
     assert len(loaded) == 1
     assert loaded[0] == record()
+
+
+def test_多軸の判定を持つ行が往復する(tmp_path: Path) -> None:
+    """ADR-006: 多軸化に向けた列を任意項目として追加する（Phase A）。
+
+    この時点では評価アダプタは 0-10 のままで、状態が新形式を読み書きできる
+    ことだけを保証する。
+    """
+    path = tmp_path / "state.jsonl"
+    original = record(
+        judgment=4,
+        mechanism=2,
+        scope="broad",
+        unscorable=False,
+        judgment_markers=("立場の表明", "他案の棄却"),
+        priority=10,
+        evaluated=True,
+    )
+    append_records(path, [original])
+    loaded, ignored = load_state(path)
+
+    assert ignored == 0
+    assert loaded[0] == original
+
+
+def test_多軸化以前の行が読め_評価済みとして復元される(tmp_path: Path) -> None:
+    """ADR-006: 既存の記録を再評価させない。
+
+    多軸化以前の行は `evaluated` を持たない。`score` があれば評価は成立して
+    いたので、そこから補完する。**これが効かないと既存の全行が「未評価」に
+    見えて再評価され、投入済みの記事が重複投入されうる**（R-002 違反）。
+    """
+    path = tmp_path / "state.jsonl"
+    legacy = {
+        "url": "https://example.com/legacy",
+        "title": "旧基準で評価済み",
+        "source_name": "example",
+        "evaluated_at": AT.isoformat(),
+        "score": 7,
+        "weight": 1,
+        "final_score": 8,
+        "ingested": True,
+        "reason": "設計解説",
+        "suggested_tags": ["arch"],
+        "failure_count": 0,
+    }
+    path.write_text(json.dumps(legacy, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    loaded, ignored = load_state(path)
+
+    assert ignored == 0, "旧形式の行はスキップされない"
+    assert loaded[0].evaluated is True, "score があるので評価済みとして復元する"
+    assert loaded[0].judgment is None, "多軸の列は既定値のまま"
+    assert loaded[0].unscorable is False
 
 
 def test_追記は既存行を保持する(tmp_path: Path) -> None:
@@ -168,6 +223,54 @@ def test_範囲外や非整数のスコアは_null_に丸める(tmp_path: Path, 
     loaded, ignored = load_state(write_lines(tmp_path / "state.jsonl", obj))
     assert ignored == 0
     assert loaded[0].score is None
+
+
+@pytest.mark.parametrize("judgment", [-1, 6, 100, "3", True])
+def test_範囲外や非整数の_judgment_は_null_に丸める(
+    tmp_path: Path, judgment: object
+) -> None:
+    """ADR-006: `score` と同じ方針。壊れた値は捨てるが行は残す。"""
+    obj = {
+        "url": "https://example.com/a",
+        "evaluated_at": AT.isoformat(),
+        "judgment": judgment,
+    }
+    loaded, ignored = load_state(write_lines(tmp_path / "state.jsonl", obj))
+    assert ignored == 0, "行はスキップしない"
+    assert loaded[0].judgment is None
+
+
+@pytest.mark.parametrize("mechanism", [-1, 3, "1", True])
+def test_範囲外や非整数の_mechanism_は_null_に丸める(
+    tmp_path: Path, mechanism: object
+) -> None:
+    obj = {
+        "url": "https://example.com/a",
+        "evaluated_at": AT.isoformat(),
+        "mechanism": mechanism,
+    }
+    loaded, ignored = load_state(write_lines(tmp_path / "state.jsonl", obj))
+    assert ignored == 0
+    assert loaded[0].mechanism is None
+
+
+@pytest.mark.parametrize("scope", ["unknown", "", 3, None])
+def test_未知の_scope_は_null_に丸める(tmp_path: Path, scope: object) -> None:
+    """射程は列挙値。未知の文字列を通すと配架の判定が壊れる。"""
+    obj = {"url": "https://example.com/a", "evaluated_at": AT.isoformat(), "scope": scope}
+    loaded, ignored = load_state(write_lines(tmp_path / "state.jsonl", obj))
+    assert ignored == 0
+    assert loaded[0].scope is None
+
+
+def test_既知の_scope_はそのまま読める(tmp_path: Path) -> None:
+    obj = {
+        "url": "https://example.com/a",
+        "evaluated_at": AT.isoformat(),
+        "scope": "periphery",
+    }
+    loaded, _ = load_state(write_lines(tmp_path / "state.jsonl", obj))
+    assert loaded[0].scope == "periphery"
 
 
 def test_負の失敗回数は0に丸める(tmp_path: Path) -> None:
@@ -308,20 +411,20 @@ def test_run_at_を欠く行はスキップする(tmp_path: Path) -> None:
 
 
 def test_記録に秘匿情報のフィールドを持たない(tmp_path: Path) -> None:
-    """REQ-NF-006: 記録には公開記事のメタデータとスコアのみを含める。"""
+    """REQ-NF-006: 記録には公開記事のメタデータと判定結果のみを含める。
+
+    **許可集合は `STATE_FIELDS` が正典**。以前はここにキーをリテラルで
+    再記述しており、列を足したときに `STATE_FIELDS` だけ更新し忘れても
+    テストが通ってしまった。
+
+    反証可能性: `StateRecord` に `token` のような項目を足して `STATE_FIELDS`
+    に載せると、下の許可集合の照合で落ちる。
+    """
     path = tmp_path / "state.jsonl"
     append_records(path, [record()])
     saved = json.loads(path.read_text(encoding="utf-8").strip())
-    assert set(saved) == {
-        "url",
-        "title",
-        "source_name",
-        "evaluated_at",
-        "score",
-        "weight",
-        "final_score",
-        "ingested",
-        "reason",
-        "suggested_tags",
-        "failure_count",
-    }
+
+    assert set(saved) == set(STATE_FIELDS)
+    # 秘匿情報を思わせる語が混ざっていないこと（許可集合そのものの検証）
+    forbidden = ("token", "key", "secret", "credential", "password")
+    assert not [f for f in STATE_FIELDS if any(w in f.lower() for w in forbidden)]

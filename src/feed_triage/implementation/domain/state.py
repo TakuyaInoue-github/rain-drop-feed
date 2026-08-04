@@ -61,15 +61,20 @@ def fold_records(records: Iterable[StateRecord]) -> dict[str, StateRecord]:
 def is_processed(record: StateRecord, max_failures: int) -> bool:
     """このレコードを「処理済み」とみなすか。
 
-    評価に成功していれば処理済み（F-001 AC-018a）。失敗している場合は、
+    評価が成立していれば処理済み（F-001 AC-018a）。成立していない場合は、
     失敗回数が上限に達したときのみ処理済みとして扱い、以降再評価しない
     （F-001 AC-018 / AC-019）。
+
+    **判定軸は `evaluated` であり `score` ではない**（ADR-006）。`score is not
+    None` を代理に使うと、採点しなかった記事（`unscorable`）を評価失敗と
+    区別できず、材料が増えないまま毎週再評価され続ける。値域から独立した
+    フラグにすることで、以後軸を増やしても状態導出が壊れない。
 
     `max_failures` は週数ではなく**総試行回数**の上限である。失敗回数は
     実行内の試行回数分だけ増加するため（F-001 AC-015）、実行内リトライの
     回数を変えると追いかける実行回数も連動して変わる。
     """
-    if record.score is not None:
+    if record.evaluated:
         return True
     return record.failure_count >= max_failures
 

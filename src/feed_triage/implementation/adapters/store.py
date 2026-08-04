@@ -15,7 +15,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from feed_triage.contract.model import SCORE_MAX, SCORE_MIN, RunRecord, StateRecord
+from feed_triage.contract.model import (
+    JUDGMENT_MAX,
+    JUDGMENT_MIN,
+    MECHANISM_MAX,
+    MECHANISM_MIN,
+    SCOPE_VALUES,
+    SCORE_MAX,
+    SCORE_MIN,
+    RunRecord,
+    StateRecord,
+)
 
 STATE_FIELDS = (
     "url",
@@ -29,11 +39,23 @@ STATE_FIELDS = (
     "reason",
     "suggested_tags",
     "failure_count",
+    # 多軸判定（ADR-006）
+    "judgment",
+    "mechanism",
+    "scope",
+    "unscorable",
+    "judgment_markers",
+    "priority",
+    "evaluated",
 )
 """`state.jsonl` の1行が持つ項目（SPEC-002 §4）。
 
 **秘匿情報のフィールドを持たない**（REQ-NF-006）。記録に含めるのは公開記事の
-メタデータとスコアのみである。
+メタデータと判定結果のみである。
+
+**この定数が書き出しキーの正典である。** `_to_json` はここから導出し、
+テストもここを参照する。以前は3箇所（`_to_json` / 本定数 / テスト内の
+リテラル）に重複しており、本定数だけ更新し忘れても誰も気づかなかった。
 """
 
 
@@ -193,23 +215,66 @@ def _build_state(raw: dict[str, Any]) -> StateRecord | None:
         reason=_as_text(raw.get("reason")),
         suggested_tags=_as_tags(raw.get("suggested_tags")),
         failure_count=_as_count(raw.get("failure_count")),
+        judgment=_as_axis(raw.get("judgment"), JUDGMENT_MIN, JUDGMENT_MAX),
+        mechanism=_as_axis(raw.get("mechanism"), MECHANISM_MIN, MECHANISM_MAX),
+        scope=_as_scope(raw.get("scope")),
+        unscorable=raw.get("unscorable") is True,
+        judgment_markers=_as_tags(raw.get("judgment_markers")),
+        priority=_as_priority(raw.get("priority")),
+        # **旧行の後方互換はこの1行が担う。** 多軸化以前に書かれた行は
+        # `evaluated` を持たないが、score があれば評価は成立していた
+        # （ADR-006）。これにより既存の記録が「未評価」に見えて再評価
+        # されるのを防ぐ
+        evaluated=_as_evaluated(raw, score),
     )
 
 
+def _as_axis(value: object, low: int, high: int) -> int | None:
+    """判定軸の値。値域外・非整数は `None` に丸める（行はスキップしない）。
+
+    `score` と同じ方針 — 壊れた値を捨てても、評価を試みた事実は残す。
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if low <= value <= high else None
+
+
+def _as_scope(value: object) -> str | None:
+    """射程。未知の文字列は `None` に丸める。"""
+    return value if isinstance(value, str) and value in SCOPE_VALUES else None
+
+
+def _as_priority(value: object) -> int | None:
+    """優先度。**値域は制約しない** — 合成規則が変われば取りうる幅も変わる。"""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
+def _as_evaluated(raw: dict[str, Any], score: int | None) -> bool:
+    """評価が成立したか。**旧行は `score` の有無から補完する**（ADR-006）。"""
+    value = raw.get("evaluated")
+    if isinstance(value, bool):
+        return value
+    return score is not None
+
+
 def _to_json(record: StateRecord) -> dict[str, Any]:
-    return {
-        "url": record.url,
-        "title": record.title,
-        "source_name": record.source_name,
-        "evaluated_at": record.evaluated_at.isoformat(),
-        "score": record.score,
-        "weight": record.weight,
-        "final_score": record.final_score,
-        "ingested": record.ingested,
-        "reason": record.reason,
-        "suggested_tags": list(record.suggested_tags),
-        "failure_count": record.failure_count,
-    }
+    """`STATE_FIELDS` の順にキーを並べた辞書へ変換する。
+
+    **キーの集合は `STATE_FIELDS` から導出する** — 手で二重管理すると、
+    列を足したときに片方だけ更新して気づかない事故が起きる。
+    """
+    encoded: dict[str, Any] = {}
+    for field_name in STATE_FIELDS:
+        value = getattr(record, field_name)
+        if isinstance(value, datetime):
+            encoded[field_name] = value.isoformat()
+        elif isinstance(value, tuple):
+            encoded[field_name] = list(value)
+        else:
+            encoded[field_name] = value
+    return encoded
 
 
 def _is_valid_score(value: object) -> bool:
