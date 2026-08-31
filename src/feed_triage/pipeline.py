@@ -36,7 +36,7 @@ from feed_triage.implementation.domain.cost import estimate_cost_usd
 from feed_triage.implementation.domain.scoring import (
     DEFAULT_HOT_THRESHOLD,
     DEFAULT_THRESHOLD,
-    adjust,
+    adjusted_score,
     is_hot,
     should_ingest,
 )
@@ -326,7 +326,6 @@ def _build_record(
     **閾値以下のエントリも score 付きで記録する** — 後から閾値を検証する
     ための実測データであり、省略すると R-006 が満たせない。
     """
-    weight = _source_of(adapters, target).weight
     previous = state.get(target.url)
     carried = previous.failure_count if previous is not None else 0
 
@@ -338,19 +337,19 @@ def _build_record(
             source_name=target.source_name,
             evaluated_at=run_at,
             score=None,
-            weight=weight,
+            weight=0,
             failure_count=carried + max(outcome.attempts, 1),
         )
 
-    final_score = adjust(outcome.verdict.score, weight)
+    final = adjusted_score(outcome.verdict.score)
     return StateRecord(
         url=target.url,
         title=target.title,
         source_name=target.source_name,
         evaluated_at=run_at,
         score=outcome.verdict.score,
-        weight=weight,
-        final_score=final_score,
+        weight=0,
+        final_score=final,
         ingested=False,
         reason=outcome.verdict.reason,
         suggested_tags=outcome.verdict.suggested_tags,

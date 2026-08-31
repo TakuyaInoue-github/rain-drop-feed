@@ -52,13 +52,13 @@ def test_各項目が_Source_へ写される(tmp_path: Path) -> None:
     assert sources[1] == Source(
         name="jane-street",
         url="https://blog.janestreet.com/feed.xml",
-        weight=1,
+        weight=0,
         tags=("functional", "ocaml"),
     )
 
 
 def test_weight_の欠落は0として扱う(tmp_path: Path) -> None:
-    """SPEC-001 §4 入力(a): 欠落・NULL は 0（補正なし）。"""
+    """TASK-118 で weight を廃止したため常に 0。"""
     body = "sources:\n  - name: a\n    url: https://example.com/feed\n"
     assert load_sources(write(tmp_path, "feeds.yaml", body))[0].weight == 0
 
@@ -161,3 +161,18 @@ def test_エラーメッセージにファイルの中身を含めない(tmp_pat
     with pytest.raises(ConfigError) as exc:
         load_sources(write(tmp_path, "feeds.yaml", body))
     assert secret not in str(exc.value)
+
+
+def test_weight_が書かれていても無視して0にする(tmp_path: Path) -> None:
+    """TASK-118: weight は廃止した。記述が残っていても補正しない。"""
+    body = (
+        "sources:\n  - name: a\n    url: https://example.com/feed\n    weight: 1\n"
+    )
+    assert load_sources(write(tmp_path, "feeds.yaml", body))[0].weight == 0
+
+
+def test_weight_が負でも無視して0にする(tmp_path: Path) -> None:
+    body = (
+        "sources:\n  - name: a\n    url: https://example.com/feed\n    weight: -1\n"
+    )
+    assert load_sources(write(tmp_path, "feeds.yaml", body))[0].weight == 0

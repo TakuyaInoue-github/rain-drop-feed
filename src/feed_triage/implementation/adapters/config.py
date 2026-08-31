@@ -97,24 +97,13 @@ def _build_source(path: Path, index: int, entry: object) -> Source:
     return Source(
         name=name.strip(),
         url=url.strip(),
-        weight=_as_int(entry.get("weight")),
+        weight=0,
         tags=_as_tags(entry.get("tags")),
     )
 
 
 def _is_nonempty_str(value: object) -> TypeGuard[str]:
     return isinstance(value, str) and bool(value.strip())
-
-
-def _as_int(value: object) -> int:
-    """`weight` を整数へ。欠落・NULL・非整数は 0（補正なし）とする。
-
-    値域は制約しない（-1 / 0 / +1 を想定するが将来の拡張を妨げない → SPEC-001 §4）。
-    bool は int の派生だが重みとしては不正なため 0 に倒す。
-    """
-    if isinstance(value, bool) or not isinstance(value, int):
-        return 0
-    return value
 
 
 def _as_tags(value: object) -> tuple[str, ...]:

@@ -266,8 +266,8 @@ def test_閾値未満のエントリは投入アダプタへ渡されない() ->
     assert all(c.will_ingest for c in ingestor.received)
 
 
-def test_情報源の重みが補正後スコアに反映される() -> None:
-    """REQ-F-004 / F-001 AC-005。"""
+def test_情報源の重みは補正後スコアに反映されない() -> None:
+    """TASK-118: weight を廃止した。feeds.yaml に記述が残っても補正しない。"""
     ingestor = FakeIngestor()
     evaluator = FakeEvaluator(
         {"https://example.test/a": EvaluationOutcome(OutcomeKind.OK, verdict=Verdict(4, ""))}
@@ -278,8 +278,22 @@ def test_情報源の重みが補正後スコアに反映される() -> None:
         adapters(sources=[source(weight=1)], evaluator=evaluator, ingestor=ingestor),
     )
 
-    assert ingestor.received[0].final_score == 5
-    assert ingestor.received[0].will_ingest is True
+    assert ingestor.received == [], "素点4は閾値未満であり、weight で押し上げられない"
+
+
+def test_補正後スコアは素点と一致する() -> None:
+    """TASK-118: final_score == score。"""
+    ingestor = FakeIngestor()
+    evaluator = FakeEvaluator(
+        {"https://example.test/a": EvaluationOutcome(OutcomeKind.OK, verdict=Verdict(6, ""))}
+    )
+
+    run(
+        options(),
+        adapters(sources=[source(weight=1)], evaluator=evaluator, ingestor=ingestor),
+    )
+
+    assert ingestor.received[0].final_score == 6
 
 
 def test_情報源のタグが投入候補へ引き渡される() -> None:
