@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from feed_triage.contract.model import StateRecord
+from feed_triage.contract.model import Entry, StateRecord
 from feed_triage.implementation.domain.state import (
     DEFAULT_EVALUATION_LIMIT,
     DEFAULT_MAX_FAILURES,
     fold_records,
     is_processed,
+    limit_per_source,
     select_evaluation_targets,
 )
 
@@ -226,3 +227,58 @@ def test_上限件数が既定値のとき超過分が持ち越される() -> No
         limit=DEFAULT_EVALUATION_LIMIT,
     )
     assert len(selected) == DEFAULT_EVALUATION_LIMIT
+
+
+class TestPerSourceLimit:
+    """TASK-119: 1ソースの一括流入が上限枠と週次の分布を占有しないこと。"""
+
+    def _entries(self, source: str, n: int, start: int = 0) -> list[Entry]:
+        return [
+            Entry(
+                url=f"https://{source}.test/{i}",
+                title="記事",
+                summary="要約",
+                published_at=None,
+                source_name=source,
+            )
+            for i in range(start, start + n)
+        ]
+
+    def test_新着が上限を超えるソースは上限件数までに絞られる(self) -> None:
+        entries = self._entries("danluu", 10)
+        got = limit_per_source(entries, {}, max_failures=3, per_source_limit=3)
+        assert len(got) == 3
+
+    def test_上限内のソースは影響を受けない(self) -> None:
+        entries = self._entries("zozo", 2)
+        got = limit_per_source(entries, {}, max_failures=3, per_source_limit=3)
+        assert got == entries
+
+    def test_ソースごとに独立して上限が適用される(self) -> None:
+        entries = self._entries("danluu", 10) + self._entries("zozo", 2)
+        got = limit_per_source(entries, {}, max_failures=3, per_source_limit=3)
+        by_source: dict[str, int] = {}
+        for item in got:
+            by_source[item.source_name] = by_source.get(item.source_name, 0) + 1
+        assert by_source == {"danluu": 3, "zozo": 2}
+
+    def test_絞り込まれた分は取得順の先頭から残る(self) -> None:
+        """どの記事が持ち越されるかは取得順で決まる（SPEC-001 §4）。"""
+        entries = self._entries("danluu", 5)
+        got = limit_per_source(entries, {}, max_failures=3, per_source_limit=2)
+        assert got == entries[:2]
+
+    def test_再評価対象は上限の対象外(self) -> None:
+        """新規のみを絞る。再評価の枠取りは AC-025a が別途保証する。"""
+        entries = self._entries("danluu", 4)
+        state = fold_records(
+            [record(e.url, score=None, failure_count=1) for e in entries[:3]]
+        )
+        got = limit_per_source(entries, state, max_failures=3, per_source_limit=1)
+        # 新規は1件（entries[3]）に絞られるが、再評価対象3件は残る
+        assert len(got) == 4
+
+    def test_上限がNoneなら素通しする(self) -> None:
+        entries = self._entries("danluu", 10)
+        got = limit_per_source(entries, {}, max_failures=3, per_source_limit=None)
+        assert got == entries

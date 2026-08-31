@@ -43,8 +43,10 @@ from feed_triage.implementation.domain.scoring import (
 from feed_triage.implementation.domain.state import (
     DEFAULT_EVALUATION_LIMIT,
     DEFAULT_MAX_FAILURES,
+    DEFAULT_PER_SOURCE_LIMIT,
     fold_records,
     is_processed,
+    limit_per_source,
     select_evaluation_targets,
 )
 
@@ -131,6 +133,7 @@ def run(
     adapters: Adapters,
     *,
     evaluation_limit: int = DEFAULT_EVALUATION_LIMIT,
+    per_source_limit: int | None = DEFAULT_PER_SOURCE_LIMIT,
     max_failures: int = DEFAULT_MAX_FAILURES,
     threshold: int = DEFAULT_THRESHOLD,
     hot_threshold: int = DEFAULT_HOT_THRESHOLD,
@@ -149,7 +152,9 @@ def run(
     state = fold_records(adapters.store.load_state())
     _fill_previous_run(summary, adapters.store.load_runs(), run_at)
 
-    targets = _select_targets(entries, state, max_failures, evaluation_limit)
+    targets = _select_targets(
+        entries, state, max_failures, evaluation_limit, per_source_limit
+    )
     summary.new_entries = len(targets)
 
     evaluated = _evaluate_all(
@@ -184,6 +189,7 @@ def _select_targets(
     state: dict[str, StateRecord],
     max_failures: int,
     limit: int,
+    per_source_limit: int | None = DEFAULT_PER_SOURCE_LIMIT,
 ) -> list[Entry]:
     """状態と突合して評価対象を選ぶ（SPEC-002 フロー #3）。
 
@@ -194,6 +200,9 @@ def _select_targets(
     by_url: dict[str, Entry] = {}
     for item in entries:
         by_url.setdefault(item.url, item)
+
+    capped = limit_per_source(by_url.values(), state, max_failures, per_source_limit)
+    by_url = {item.url: item for item in capped}
 
     selected = select_evaluation_targets(by_url.keys(), state, max_failures, limit)
     return [by_url[url] for url in selected]

@@ -846,3 +846,22 @@ def test_全件が_SKIPPED_なら全滅としない() -> None:
     )
 
     assert outcome.exit_code == exit_codes.OK
+
+
+class TestPerSourceLimitInPipeline:
+    """TASK-119: 1ソースの一括流入が週次の評価枠を占有しないこと。"""
+
+    def test_1ソースの新着が上限を超えると絞られる(self) -> None:
+        entries = [
+            entry(url=f"https://danluu.test/{i}", source_name="danluu") for i in range(10)
+        ]
+        outcome = run(options(dry_run=True), adapters(fetch=FakeFetcher(entries)), per_source_limit=3)
+        assert outcome.summary.new_entries == 3
+
+    def test_上限内の複数ソースは影響を受けない(self) -> None:
+        entries = [
+            entry(url="https://a.test/1", source_name="a"),
+            entry(url="https://b.test/1", source_name="b"),
+        ]
+        outcome = run(options(dry_run=True), adapters(fetch=FakeFetcher(entries)), per_source_limit=3)
+        assert outcome.summary.new_entries == 2
