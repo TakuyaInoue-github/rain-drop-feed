@@ -117,7 +117,7 @@ R-001 ビジネス課題
 |---|---|
 | パイプライン本体 | 実装済み（取得・評価・投入・記録・サマリの全段階） |
 | 情報源 | **58 件**（`feeds.yaml`。全件 `verified: true`） |
-| テスト | 417 件（ruff / mypy strict / import-linter とあわせて CI で実行） |
+| テスト | 425 件（ruff / mypy strict / import-linter とあわせて CI で実行） |
 | 週次実行 | 稼働中（`.github/workflows/weekly.yml`） |
 | 未着手 | 情報源ごとの weight と低採択ソースの棚卸し（→ TASK-105 / TASK-114）。閾値5と件数上限500は実測で確定済み（TASK-035 / TASK-028） |
 
