@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import datetime
 
-from feed_triage.contract.model import StateRecord
+from feed_triage.contract.model import Entry, StateRecord
 
 DEFAULT_EVALUATION_LIMIT = 500
 """1回の実行で評価する件数の上限（F-001 AC-025 / SPEC-002 OQ-001）。
@@ -33,6 +33,26 @@ DEFAULT_EVALUATION_LIMIT = 500
 
 **見直し条件:** 定常状態に入った後も持ち越しが継続する、または実行時間が
 45分に迫る場合。実測は TASK-028 に記録する。
+"""
+
+
+DEFAULT_PER_SOURCE_LIMIT = 30
+"""1回の実行で1つの情報源から評価する**新規**記事の上限（TASK-119）。
+
+**目的は分布の占有を防ぐこと**であり、全体の件数を絞ることではない。
+2026-08-30 の実行で `danluu` が初めて取得に成功し（それまで毎回 10 MB 超で
+失敗していたフィードが 6.15 MB へ縮んだ）、過去記事128件が一斉に新着となった。
+その結果、新着222件中128件・投入133件中108件（81%）が単一ソースとなり、
+採択率が 59.9%（直近3週は 13.4〜20.2%）へ跳ねた。**評価自体は妥当**だったが、
+1ソースが週次の分布を占有すると閾値や基準の実測がその週だけ読めなくなる。
+
+**30 とした根拠:** 定常状態の新着は週97〜114件で、最大のソース（`simonwillison`）
+でも週22.3件（TASK-035 の実測）。30 は平常時の最大を上回るため**通常の運用では
+発動しない**。発動するのは今回のような一括流入時のみで、`danluu` の128件なら
+5週かけて消化される。
+
+**再評価対象には適用しない。** 新規のみを絞る。再評価が枠を占有しない保証は
+F-001 AC-025a（新規優先）が別途担う。
 """
 
 DEFAULT_MAX_FAILURES = 3
@@ -110,3 +130,38 @@ def select_evaluation_targets(
     if limit is None:
         return selected
     return selected[:limit]
+
+
+def limit_per_source(
+    entries: Iterable[Entry],
+    state: dict[str, StateRecord],
+    max_failures: int,
+    per_source_limit: int | None = DEFAULT_PER_SOURCE_LIMIT,
+) -> list[Entry]:
+    """情報源ごとに**新規**記事の件数を上限まで絞る（TASK-119）。
+
+    1つの情報源が一括流入して週次の分布と評価枠を占有するのを防ぐ。
+    絞られた分は選択されないため次回以降へ持ち越される（F-001 AC-025 と同じ扱い）。
+
+    **再評価対象は絞らない。** 新規のみを対象とすることで、
+    F-001 AC-025a が保証する「新規優先で枠を埋める」順序を壊さない。
+
+    取得順を保つ（SPEC-001 §4）— どの記事が持ち越されるかを決めるため、
+    各情報源の先頭から上限件数までを残す。
+    """
+    if per_source_limit is None:
+        return list(entries)
+
+    kept: list[Entry] = []
+    fresh_count: dict[str, int] = {}
+    for item in entries:
+        record = state.get(item.url)
+        if record is not None and is_processed(record, max_failures):
+            continue
+        if record is None:
+            seen = fresh_count.get(item.source_name, 0)
+            if seen >= per_source_limit:
+                continue
+            fresh_count[item.source_name] = seen + 1
+        kept.append(item)
+    return kept

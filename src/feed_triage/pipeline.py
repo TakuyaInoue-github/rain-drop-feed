@@ -36,15 +36,17 @@ from feed_triage.implementation.domain.cost import estimate_cost_usd
 from feed_triage.implementation.domain.scoring import (
     DEFAULT_HOT_THRESHOLD,
     DEFAULT_THRESHOLD,
-    adjust,
+    adjusted_score,
     is_hot,
     should_ingest,
 )
 from feed_triage.implementation.domain.state import (
     DEFAULT_EVALUATION_LIMIT,
     DEFAULT_MAX_FAILURES,
+    DEFAULT_PER_SOURCE_LIMIT,
     fold_records,
     is_processed,
+    limit_per_source,
     select_evaluation_targets,
 )
 
@@ -131,6 +133,7 @@ def run(
     adapters: Adapters,
     *,
     evaluation_limit: int = DEFAULT_EVALUATION_LIMIT,
+    per_source_limit: int | None = DEFAULT_PER_SOURCE_LIMIT,
     max_failures: int = DEFAULT_MAX_FAILURES,
     threshold: int = DEFAULT_THRESHOLD,
     hot_threshold: int = DEFAULT_HOT_THRESHOLD,
@@ -149,7 +152,9 @@ def run(
     state = fold_records(adapters.store.load_state())
     _fill_previous_run(summary, adapters.store.load_runs(), run_at)
 
-    targets = _select_targets(entries, state, max_failures, evaluation_limit)
+    targets = _select_targets(
+        entries, state, max_failures, evaluation_limit, per_source_limit
+    )
     summary.new_entries = len(targets)
 
     evaluated = _evaluate_all(
@@ -184,6 +189,7 @@ def _select_targets(
     state: dict[str, StateRecord],
     max_failures: int,
     limit: int,
+    per_source_limit: int | None = DEFAULT_PER_SOURCE_LIMIT,
 ) -> list[Entry]:
     """状態と突合して評価対象を選ぶ（SPEC-002 フロー #3）。
 
@@ -194,6 +200,9 @@ def _select_targets(
     by_url: dict[str, Entry] = {}
     for item in entries:
         by_url.setdefault(item.url, item)
+
+    capped = limit_per_source(by_url.values(), state, max_failures, per_source_limit)
+    by_url = {item.url: item for item in capped}
 
     selected = select_evaluation_targets(by_url.keys(), state, max_failures, limit)
     return [by_url[url] for url in selected]
@@ -317,7 +326,6 @@ def _build_record(
     **閾値以下のエントリも score 付きで記録する** — 後から閾値を検証する
     ための実測データであり、省略すると R-006 が満たせない。
     """
-    weight = _source_of(adapters, target).weight
     previous = state.get(target.url)
     carried = previous.failure_count if previous is not None else 0
 
@@ -329,19 +337,19 @@ def _build_record(
             source_name=target.source_name,
             evaluated_at=run_at,
             score=None,
-            weight=weight,
+            weight=0,
             failure_count=carried + max(outcome.attempts, 1),
         )
 
-    final_score = adjust(outcome.verdict.score, weight)
+    final = adjusted_score(outcome.verdict.score)
     return StateRecord(
         url=target.url,
         title=target.title,
         source_name=target.source_name,
         evaluated_at=run_at,
         score=outcome.verdict.score,
-        weight=weight,
-        final_score=final_score,
+        weight=0,
+        final_score=final,
         ingested=False,
         reason=outcome.verdict.reason,
         suggested_tags=outcome.verdict.suggested_tags,

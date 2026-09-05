@@ -9,7 +9,7 @@ from feed_triage.implementation.domain.scoring import (
     DEFAULT_THRESHOLD,
     SCORE_MAX,
     SCORE_MIN,
-    adjust,
+    adjusted_score,
     is_hot,
     is_valid_score,
     should_ingest,
@@ -34,24 +34,6 @@ class TestIsValidScore:
     @pytest.mark.parametrize("score", [True, False])
     def test_boolは整数の派生だがスコアとしては不正(self, score: bool) -> None:
         assert is_valid_score(score) is False
-
-
-class TestAdjust:
-    """REQ-F-004: 情報源の重みによるスコア補正。"""
-
-    def test_重みが加算される(self) -> None:
-        assert adjust(5, 1) == 6
-
-    def test_負の重みは減算になる(self) -> None:
-        assert adjust(5, -1) == 4
-
-    def test_重みが0なら変化しない(self) -> None:
-        assert adjust(5, 0) == 5
-
-    def test_補正の結果は値域を超えうる(self) -> None:
-        """補正後スコアは閾値との比較にのみ用いるため、値域に収める必要はない。"""
-        assert adjust(10, 1) == 11
-        assert adjust(0, -1) == -1
 
 
 class TestShouldIngest:
@@ -98,3 +80,14 @@ def test_スコアの値域が_contract_層で定義されている() -> None:
 
     assert (model.SCORE_MIN, model.SCORE_MAX) == (0, 10)
     assert (SCORE_MIN, SCORE_MAX) == (model.SCORE_MIN, model.SCORE_MAX)
+
+
+class TestWeightAbolished:
+    """TASK-118: weight を廃止し、補正後スコアは素点と一致する。"""
+
+    def test_補正後スコアは素点と一致する(self) -> None:
+        assert adjusted_score(7) == 7
+
+    def test_値域の両端でも素点のまま(self) -> None:
+        assert adjusted_score(0) == 0
+        assert adjusted_score(10) == 10

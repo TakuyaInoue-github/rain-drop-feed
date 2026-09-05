@@ -25,7 +25,7 @@ from feed_triage.implementation.adapters.ingest import (
     Ingestor,
     build_tags,
 )
-from feed_triage.implementation.domain.scoring import adjust, is_hot, should_ingest
+from feed_triage.implementation.domain.scoring import is_hot, should_ingest
 
 TOKEN = "test-token-DO-NOT-LEAK"
 COLLECTION_ID = 12345678
@@ -58,7 +58,9 @@ def candidate(
     ここで閾値を再実装せず実物の関数を通すことで、境界値テスト（T-014 / T-015）が
     実際の判定関数を検証する。
     """
-    final_score = adjust(score, weight)
+    # weight は廃止済み（TASK-118）。値域外の final_score を作るための
+    # テスト用オフセットとしてのみ残す（丸めない仕様の検証に必要）。
+    final_score = score + weight
     return Candidate(
         entry=entry(url, title, summary),
         verdict=Verdict(score=score, reason="理由", suggested_tags=suggested_tags),
@@ -104,21 +106,6 @@ def test_閾値以上の記事だけが_POST_される() -> None:
     assert bodies(route)[0]["link"] == "https://example.com/high"
     assert result.ingested == 1
     assert result.attempted == 1
-
-
-@respx.mock
-def test_重みにより投入可否が変わる() -> None:
-    """T-006: `adjust` が weight を無視すれば両者が同判定になりレッド。"""
-    route = respx.post(API_URL).mock(return_value=ok_response())
-
-    ingestor().ingest_all(
-        [
-            candidate("https://example.com/boosted", score=4, weight=1),
-            candidate("https://example.com/plain", score=4, weight=0),
-        ]
-    )
-
-    assert [body["link"] for body in bodies(route)] == ["https://example.com/boosted"]
 
 
 @respx.mock
@@ -179,7 +166,7 @@ def test_auto_とスコア帯タグが付与される() -> None:
 
 def test_スコアタグは補正後スコアを用いる() -> None:
     """OQ-001 の決定: タグだけで投入判定（n >= 閾値）を再現できるようにする。"""
-    tags = build_tags(candidate(score=4, weight=1))
+    tags = build_tags(candidate(score=5))
     assert "score-5" in tags
     assert "score-4" not in tags
 

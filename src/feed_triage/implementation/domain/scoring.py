@@ -15,7 +15,7 @@ __all__ = [
     "DEFAULT_THRESHOLD",
     "DEFAULT_HOT_THRESHOLD",
     "is_valid_score",
-    "adjust",
+    "adjusted_score",
     "should_ingest",
     "is_hot",
 ]
@@ -38,9 +38,17 @@ def is_valid_score(score: object) -> bool:
     return SCORE_MIN <= score <= SCORE_MAX
 
 
-def adjust(score: int, weight: int) -> int:
-    """情報源の重みを加算した補正後スコアを返す（REQ-F-004）。"""
-    return score + weight
+def adjusted_score(score: int) -> int:
+    """補正後スコアを返す。
+
+    **情報源ごとの重み付けは廃止した（TASK-118）。** 実測で weight が投入可否を
+    変えたのは新基準1,304件中20件（1.3%）にとどまり、定常状態の4回では0件だった。
+    LLM の素点が既に個人ブログを高く評価しており（08-30 の平均素点は
+    weight+1 のソースが 6.08、weight 0 が 4.13）、重みは屋上屋になっていた。
+
+    関数を残すのは、補正の有無を判断する箇所を1つに保つため。
+    """
+    return score
 
 
 def should_ingest(final_score: int, threshold: int = DEFAULT_THRESHOLD) -> bool:
